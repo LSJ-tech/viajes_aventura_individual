@@ -23,6 +23,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 17 - Segundo rediseño del frontend: navegación por pestañas y modo oscuro](#cambio-17---segundo-rediseño-del-frontend-navegación-por-pestañas-y-modo-oscuro)
 - [Cambio 18 - Hallazgos de SonarCloud: credencial hardcodeada y validación de datos no confiables](#cambio-18---hallazgos-de-sonarcloud-credencial-hardcodeada-y-validación-de-datos-no-confiables)
 - [Cambio 19 - Limpieza de code smells de SonarCloud (34 hallazgos)](#cambio-19---limpieza-de-code-smells-de-sonarcloud-34-hallazgos)
+- [Cambio 20 - Informe Word puesto al día](#cambio-20---informe-word-puesto-al-día)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -407,3 +408,23 @@ Se evaluó dejar `python:S8415` sin corregir (documentar `responses=` es opciona
 #### Validación
 
 `cd backend && py -3 -m pytest` — **43 pruebas, todas pasan** (los cambios de `Annotated` y `responses=` no alteran el comportamiento de los endpoints, solo su firma/documentación). Se corrió `npm run build` en `frontend/` sin errores y se verificó visualmente con Playwright (captura de la pestaña Paquetes) que los badges con los colores ajustados siguen siendo legibles y sin errores de consola. Los cuatro colores se validaron con un script Python que calcula el contraste WCAG exacto antes y después del cambio.
+
+Confirmado también contra el análisis real de SonarCloud (esperando a que reanalizara el commit exacto, comparando la revisión de `/api/project_analyses/search` contra el hash del último push): **0 bugs, 0 vulnerabilidades, 0 code smells, 0 security hotspots**, Quality Gate en `OK` con las 5 condiciones en verde.
+
+### Cambio 20 - Informe Word puesto al día
+
+**Fecha:** 2026-09-24
+**Archivo modificado:** `Informe_Viajes_Aventura.docx`
+**Objetivo:** el usuario preguntó si quedaba algo por mejorar "de acuerdo a los requerimientos"; el código y las 17 reglas ya estaban cubiertos (re-verificado contra el PDF, sin hallazgos nuevos), pero el informe Word seguía con los números del Cambio 14 — "37 pruebas automatizadas" y sin mención del fix de concurrencia (Cambio 15), las pruebas nuevas de Destinos (Cambio 16), el segundo rediseño del frontend (Cambio 17) ni el estado limpio de SonarCloud (Cambios 18-19).
+
+#### Implementación
+
+Se actualizaron las secciones 6 (Arquitectura y tecnología) y 8 (Estado actual y próximos pasos) del informe: 43 pruebas automatizadas (no 37), mención explícita de la prueba de concurrencia y la transacción `BEGIN IMMEDIATE` que corrige R14, el frontend con navegación por pestañas y modo oscuro (en vez de la descripción genérica del primer rediseño), y el estado de SonarCloud (Quality Gate en `OK`, 0 bugs/vulnerabilidades/code smells/security hotspots). Se regeneró el documento con el mismo script de `docx` usado desde el Cambio 1 del informe.
+
+#### Revisión técnica
+
+No hubo decisiones de diseño que evaluar: es sincronizar un documento de estado con hechos ya validados en cambios anteriores, sin alterar código.
+
+#### Validación
+
+Se verificó con `python-docx` que los tres párrafos actualizados contienen el texto esperado ("43 pruebas", "BEGIN IMMEDIATE", "SonarCloud") y que las 3 tablas del documento siguen intactas.
