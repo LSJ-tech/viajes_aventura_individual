@@ -121,9 +121,9 @@ function Paquetes({ adminToken }) {
       {error && <p className="error">{error}</p>}
 
       {cargando ? (
-        <p>Cargando paquetes...</p>
+        <p className="estado-vacio">Cargando paquetes…</p>
       ) : paquetes.length === 0 ? (
-        <p>Todavía no hay paquetes creados.</p>
+        <p className="estado-vacio">Todavía no hay paquetes creados.</p>
       ) : (
         <div className="table-wrap">
           <table>
@@ -141,14 +141,14 @@ function Paquetes({ adminToken }) {
             <tbody>
               {paquetes.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.nombre}</td>
-                  <td>
+                  <td data-label="Nombre">{p.nombre}</td>
+                  <td data-label="Fechas">
                     {p.fecha_salida} → {p.fecha_regreso}
                   </td>
-                  <td>{p.destinos.map((d) => d.nombre).join(', ')}</td>
-                  <td>{p.cupo_disponible}</td>
-                  <td>${p.precio}</td>
-                  <td>
+                  <td data-label="Destinos">{p.destinos.map((d) => d.nombre).join(', ')}</td>
+                  <td data-label="Cupo disp.">{p.cupo_disponible}</td>
+                  <td data-label="Precio">${p.precio}</td>
+                  <td data-label="Estado">
                     <span className={`badge ${p.publicado ? 'badge-ok' : 'badge-warn'}`}>
                       {p.publicado ? 'Publicado' : 'Borrador'}
                     </span>

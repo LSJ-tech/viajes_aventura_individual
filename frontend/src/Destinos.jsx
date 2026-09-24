@@ -93,9 +93,9 @@ function Destinos({ adminToken }) {
       {error && <p className="error">{error}</p>}
 
       {cargando ? (
-        <p>Cargando destinos...</p>
+        <p className="estado-vacio">Cargando destinos…</p>
       ) : destinos.length === 0 ? (
-        <p>Todavía no hay destinos en el catálogo.</p>
+        <p className="estado-vacio">Todavía no hay destinos en el catálogo.</p>
       ) : (
         <div className="table-wrap">
           <table>
@@ -112,11 +112,11 @@ function Destinos({ adminToken }) {
             <tbody>
               {destinos.map((d) => (
                 <tr key={d.id}>
-                  <td>{d.nombre}</td>
-                  <td>{d.zona}</td>
-                  <td>{d.duracion_dias} días</td>
-                  <td>${d.costo_base}</td>
-                  <td>
+                  <td data-label="Nombre">{d.nombre}</td>
+                  <td data-label="Zona">{d.zona}</td>
+                  <td data-label="Duración">{d.duracion_dias} días</td>
+                  <td data-label="Costo base">${d.costo_base}</td>
+                  <td data-label="Estado">
                     <span className={`badge ${d.disponible ? 'badge-ok' : 'badge-off'}`}>
                       {d.disponible ? 'Disponible' : 'No disponible'}
                     </span>

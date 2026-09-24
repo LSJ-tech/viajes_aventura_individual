@@ -20,6 +20,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 14 - Auditoría contra el PDF del caso: tabla de supuestos explícitos](#cambio-14---auditoría-contra-el-pdf-del-caso-tabla-de-supuestos-explícitos)
 - [Cambio 15 - Condición de carrera en el cupo de Reservas (R14)](#cambio-15---condición-de-carrera-en-el-cupo-de-reservas-r14)
 - [Cambio 16 - Cobertura de pruebas faltante en Destinos (modificar)](#cambio-16---cobertura-de-pruebas-faltante-en-destinos-modificar)
+- [Cambio 17 - Segundo rediseño del frontend: navegación por pestañas y modo oscuro](#cambio-17---segundo-rediseño-del-frontend-navegación-por-pestañas-y-modo-oscuro)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -333,3 +334,24 @@ No hubo alternativas de diseño que evaluar: es cobertura de pruebas pura sobre 
 #### Validación
 
 `cd backend && py -3 -m pytest` — **43 pruebas, todas pasan** (38 anteriores + 5 nuevas).
+
+### Cambio 17 - Segundo rediseño del frontend: navegación por pestañas y modo oscuro
+
+**Fecha:** 2026-09-24
+**Archivos creados:** `frontend/src/icons.jsx`
+**Archivos modificados:** `frontend/index.html`, `frontend/src/App.css`, `frontend/src/App.jsx`, `frontend/src/Admin.jsx`, `frontend/src/Clientes.jsx`, `frontend/src/Destinos.jsx`, `frontend/src/Paquetes.jsx`, `frontend/src/Reservas.jsx`
+**Objetivo:** el usuario, tras el rediseño del Cambio 13, pidió explícitamente una versión más moderna ("2026"): la estructura anterior apilaba las 5 secciones (Admin, Mi cuenta, Destinos, Paquetes, Reservas) una debajo de otra en una sola página larga.
+
+#### Implementación
+
+Se cargó la tipografía Inter desde Google Fonts (`index.html`, con `preconnect` para no penalizar el primer render). `App.jsx` pasó de apilar secciones a un layout de app: una barra superior (`topbar`) con el logo/título y dos "chips" de sesión a la derecha (Admin y Mi cuenta), y debajo un control segmentado (`tabs-nav`, estilo iOS/macOS) para elegir entre Destinos, Paquetes y Reservas — solo la pestaña activa se renderiza dentro de una única tarjeta de contenido (`.content`). `Admin.jsx` y `Clientes.jsx` dejaron de ser tarjetas de página completa y pasaron a ser un `chip` que al hacer clic despliega un panel flotante (`auth-panel`, posicionado absoluto, con una animación de entrada) con el formulario de login/registro; ambos siguen recibiendo las mismas props (`perfil`/`adminToken`, callbacks) que antes, sin tocar la lógica de sesión en `App.jsx`. Se creó `icons.jsx` con 6 iconos SVG de trazo (estilo Feather/Lucide) escritos a mano —sin agregar una librería de iconos como dependencia nueva— para los tabs y los chips.
+
+`App.css` se reescribió con variables CSS light/dark: `@media (prefers-color-scheme: dark)` redefine la paleta completa (fondo, superficie, texto, colores de marca) sin necesitar un botón de cambio manual — la app respeta el tema del sistema operativo. Los botones primarios pasaron a un gradiente con sombra y micro-interacción al pasar el mouse (`translateY` + brillo). Las tablas (`Destinos`, `Paquetes`, `Reservas`) ganaron `data-label` en cada `<td>` y una media query que, bajo 640px, oculta el `<thead>` y convierte cada fila en una tarjeta apilada con el nombre de columna como etiqueta (técnica CSS estándar para tablas responsivas, sin duplicar el JSX en una vista de tarjetas aparte).
+
+#### Revisión técnica
+
+Se evaluó un toggle manual de tema claro/oscuro (con estado en `localStorage`) frente a seguir la preferencia del sistema operativo vía `prefers-color-scheme`; se adoptó la segunda por ser más simple (sin estado adicional que sincronizar ni botón que diseñar) y porque cubre el caso de uso real sin fricción. Se evaluó una librería de iconos (`lucide-react`, `react-icons`) frente a SVGs propios; se adoptaron SVGs propios para no sumar una dependencia de build por 6 iconos que no van a cambiar. Se evaluó mantener las tablas con scroll horizontal (como en el Cambio 13) frente a convertirlas en tarjetas apiladas en móvil; se adoptó la conversión a tarjetas por ser el patrón más usado en apps modernas para datos tabulares en pantallas angostas, y el costo (agregar `data-label` a cada celda) fue bajo.
+
+#### Validación
+
+Se instaló Playwright nuevamente (como en el Cambio 13) para levantar `npm run dev` + backend con datos de prueba y capturar: escritorio con la pestaña Destinos activa, cambio a la pestaña Paquetes (confirma que el switch de tabs funciona y no recarga la página), el panel flotante de Admin abierto (confirma la animación/posicionamiento), la misma vista en modo oscuro (`colorScheme: 'dark'` de Playwright, sin tocar la configuración del sistema), y Destinos/Paquetes en móvil (390px) confirmando que las tablas se ven como tarjetas apiladas, no como scroll horizontal. `console --errors` no arrojó ningún error en ninguna de las capturas. La base de datos y el build generados durante las pruebas se eliminaron antes de este commit.

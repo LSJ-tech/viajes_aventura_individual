@@ -3,16 +3,24 @@ import './App.css'
 import Admin from './Admin'
 import Clientes from './Clientes'
 import Destinos from './Destinos'
+import { IconCalendarCheck, IconMapPin, IconPackage } from './icons'
 import Paquetes from './Paquetes'
 import Reservas from './Reservas'
 
 const TOKEN_KEY = 'viajes_aventura_token'
 const ADMIN_TOKEN_KEY = 'viajes_aventura_admin_token'
 
+const TABS = [
+  { id: 'destinos', label: 'Destinos', Icon: IconMapPin },
+  { id: 'paquetes', label: 'Paquetes', Icon: IconPackage },
+  { id: 'reservas', label: 'Reservas', Icon: IconCalendarCheck },
+]
+
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || '')
   const [perfil, setPerfil] = useState(null)
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem(ADMIN_TOKEN_KEY) || '')
+  const [tab, setTab] = useState('destinos')
 
   useEffect(() => {
     if (!token) {
@@ -54,15 +62,38 @@ function App() {
   }
 
   return (
-    <main>
-      <h1>Viajes Aventura</h1>
-      <p className="subtitulo">Sistema de gestión de agencia de viajes — TI3V21, INACAP Valparaíso</p>
-      <Admin adminToken={adminToken} onSesionIniciada={iniciarSesionAdmin} onCerrarSesion={cerrarSesionAdmin} />
-      <Clientes perfil={perfil} onSesionIniciada={iniciarSesion} onCerrarSesion={cerrarSesion} />
-      <Destinos adminToken={adminToken} />
-      <Paquetes adminToken={adminToken} />
-      <Reservas token={token} perfil={perfil} />
-    </main>
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            ⛰
+          </span>
+          <div>
+            <h1>Viajes Aventura</h1>
+            <p className="subtitulo">Sistema de gestión de agencia de viajes — TI3V21, INACAP Valparaíso</p>
+          </div>
+        </div>
+        <div className="auth-chips">
+          <Admin adminToken={adminToken} onSesionIniciada={iniciarSesionAdmin} onCerrarSesion={cerrarSesionAdmin} />
+          <Clientes perfil={perfil} onSesionIniciada={iniciarSesion} onCerrarSesion={cerrarSesion} />
+        </div>
+      </header>
+
+      <nav className="tabs-nav">
+        {TABS.map(({ id, label, Icon }) => (
+          <button key={id} className={tab === id ? 'tab-activo' : ''} onClick={() => setTab(id)}>
+            <Icon />
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      <main className="content">
+        {tab === 'destinos' && <Destinos adminToken={adminToken} />}
+        {tab === 'paquetes' && <Paquetes adminToken={adminToken} />}
+        {tab === 'reservas' && <Reservas token={token} perfil={perfil} />}
+      </main>
+    </div>
   )
 }
 

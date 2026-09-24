@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { IconChevronDown, IconShield } from './icons'
 
 const formVacio = { correo: '', password: '' }
 
 function Admin({ adminToken, onSesionIniciada, onCerrarSesion }) {
+  const [abierto, setAbierto] = useState(false)
   const [form, setForm] = useState(formVacio)
   const [error, setError] = useState('')
 
@@ -21,40 +23,55 @@ function Admin({ adminToken, onSesionIniciada, onCerrarSesion }) {
     }
     onSesionIniciada(data.access_token)
     setForm(formVacio)
-  }
-
-  if (adminToken) {
-    return (
-      <section>
-        <h2>Administración</h2>
-        <p>Sesión de administrador activa. Ahora puedes crear destinos y paquetes más abajo.</p>
-        <button onClick={onCerrarSesion}>Cerrar sesión de administrador</button>
-      </section>
-    )
+    setAbierto(false)
   }
 
   return (
-    <section>
-      <h2>Administración</h2>
-      <form onSubmit={iniciarSesion} className="form-destino">
-        <input
-          type="email"
-          placeholder="Correo de administrador"
-          value={form.correo}
-          onChange={(e) => setForm({ ...form, correo: e.target.value })}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          required
-        />
-        <button type="submit">Iniciar sesión</button>
-      </form>
-      {error && <p className="error">{error}</p>}
-    </section>
+    <div className="auth-widget">
+      <button className={`chip ${adminToken ? 'chip-on' : ''}`} onClick={() => setAbierto((v) => !v)}>
+        <IconShield />
+        <span>{adminToken ? 'Administrador' : 'Admin'}</span>
+        <IconChevronDown className="chip-caret" />
+      </button>
+
+      {abierto && (
+        <div className="auth-panel">
+          {adminToken ? (
+            <>
+              <p className="auth-panel-title">Sesión de administrador activa</p>
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  onCerrarSesion()
+                  setAbierto(false)
+                }}
+              >
+                Cerrar sesión
+              </button>
+            </>
+          ) : (
+            <form onSubmit={iniciarSesion} className="auth-form">
+              <input
+                type="email"
+                placeholder="Correo de administrador"
+                value={form.correo}
+                onChange={(e) => setForm({ ...form, correo: e.target.value })}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Contraseña"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required
+              />
+              <button type="submit">Iniciar sesión</button>
+            </form>
+          )}
+          {error && <p className="error">{error}</p>}
+        </div>
+      )}
+    </div>
   )
 }
 

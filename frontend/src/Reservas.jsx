@@ -53,7 +53,7 @@ function Reservas({ token, perfil }) {
     return (
       <section>
         <h2>Reservas</h2>
-        <p>Inicia sesión para reservar un paquete y ver tu historial.</p>
+        <p className="estado-vacio">Inicia sesión para reservar un paquete y ver tu historial.</p>
       </section>
     )
   }
@@ -86,9 +86,9 @@ function Reservas({ token, perfil }) {
 
       <h3>Mis reservas</h3>
       {cargando ? (
-        <p>Cargando reservas...</p>
+        <p className="estado-vacio">Cargando reservas…</p>
       ) : misReservas.length === 0 ? (
-        <p>Todavía no tienes reservas.</p>
+        <p className="estado-vacio">Todavía no tienes reservas.</p>
       ) : (
         <div className="table-wrap">
           <table>
@@ -104,13 +104,13 @@ function Reservas({ token, perfil }) {
             <tbody>
               {misReservas.map((r) => (
                 <tr key={r.id}>
-                  <td>{r.paquete.nombre}</td>
-                  <td>
+                  <td data-label="Paquete">{r.paquete.nombre}</td>
+                  <td data-label="Fechas">
                     {r.paquete.fecha_salida} → {r.paquete.fecha_regreso}
                   </td>
-                  <td>{r.personas}</td>
-                  <td>${r.total}</td>
-                  <td>{r.fecha_emision}</td>
+                  <td data-label="Personas">{r.personas}</td>
+                  <td data-label="Total">${r.total}</td>
+                  <td data-label="Emitida">{r.fecha_emision}</td>
                 </tr>
               ))}
             </tbody>
