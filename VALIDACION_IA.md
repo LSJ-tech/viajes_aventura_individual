@@ -10,6 +10,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 4 - Servidor único: FastAPI sirve el frontend compilado](#cambio-4---servidor-único-fastapi-sirve-el-frontend-compilado)
 - [Cambio 5 - Esqueleto base: backend FastAPI, frontend React y esquema SQLite](#cambio-5---esqueleto-base-backend-fastapi-frontend-react-y-esquema-sqlite)
 - [Cambio 6 - Dominio Destinos: CRUD y catálogo (R1, R2, R8)](#cambio-6---dominio-destinos-crud-y-catálogo-r1-r2-r8)
+- [Cambio 7 - Dominio Paquetes: armado, precio y publicación (R3-R7)](#cambio-7---dominio-paquetes-armado-precio-y-publicación-r3-r7)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -125,3 +126,24 @@ Se evaluó validar la unicidad del nombre con un `SELECT` previo al `INSERT` fre
 #### Validación
 
 Probado con el backend corriendo localmente (`uvicorn`, puertos 8001/8002 para no chocar con otras pruebas): creación (201) y verificación de los datos devueltos; creación duplicada del mismo nombre (409); costo base 0 rechazado por Pydantic (422); eliminación de un destino sin paquetes asociados (se borra, el listado posterior queda vacío); eliminación de un destino insertado manualmente en `paquete_destinos` (queda `disponible: false` y sigue apareciendo en el listado, no se borra). Se corrió `npm run build` en `frontend/` y compiló sin errores (18 módulos). La base de datos y el build generados durante las pruebas se eliminaron antes de este commit (excluidos por `.gitignore`).
+
+### Cambio 7 - Dominio Paquetes: armado, precio y publicación (R3-R7)
+
+**Fecha:** 2026-09-24
+**Archivos creados:** `backend/app/paquetes.py`, `frontend/src/Paquetes.jsx`
+**Archivos modificados:** `backend/app/main.py`, `frontend/src/App.jsx`, `frontend/src/App.css`
+**Objetivo:** implementar el segundo dominio del plan de trabajo (§7): armar paquetes combinando destinos, calcular el precio con margen y consultar disponibilidad.
+
+#### Implementación
+
+Backend: router `paquetes.py` con `GET /api/paquetes`, `GET /api/paquetes/{id}`, `POST /api/paquetes` y `POST /api/paquetes/{id}/publicar` (sin `PUT`/`DELETE`: la sección 4 del README solo pide crear, calcular precio y consultar disponibilidad para este dominio, no modificar). El esquema `PaqueteCreate` valida con Pydantic: `cupo_maximo > 0` (R5), `destino_ids` con `min_length=2, max_length=5` y sin duplicados vía `field_validator` (R3), y `fecha_regreso` posterior a `fecha_salida` vía otro `field_validator` que compara contra el campo ya validado (R5). Antes de insertar, `_validar_destinos_disponibles` confirma que todos los `destino_ids` existan y tengan `disponible = 1` (cruce con R8: un destino no disponible no puede usarse en paquetes nuevos). La creación de `paquetes` + sus filas en `paquete_destinos` corre en una única transacción (rollback si falla el `INSERT` en `paquete_destinos`). El precio (R6) se calcula como `round(suma_costo_base * (1 + margen))`; mientras el paquete no está publicado se recalcula al vuelo desde los costos actuales de sus destinos, y `POST /publicar` lo calcula una vez y lo guarda en `precio_publicado` con `publicado = 1` (R7), devolviendo 409 si ya estaba publicado. `cupo_disponible` se calcula como `cupo_maximo - SUM(personas)` desde `reservas` (tabla vacía por ahora, queda listo para el dominio Reservas).
+
+Frontend: componente `Paquetes.jsx` con formulario (nombre, fechas, cupo, margen, checklist de destinos disponibles obtenidos de `GET /api/destinos?solo_disponibles=true`) y tabla de paquetes (fechas, destinos incluidos, cupo disponible, precio, estado publicado/borrador y botón "Publicar" para los no publicados).
+
+#### Revisión técnica
+
+Se evaluó fijar el precio ya en la creación del paquete frente a calcularlo al vuelo hasta la publicación; se adoptó la segunda porque R7 dice explícitamente que el precio "queda fijado cuando el paquete se publica", lo que implica que antes de eso debe reflejar los costos vigentes (por ejemplo, si se corrige el costo base de un destino antes de publicar el paquete, el precio del borrador debe verse afectado; una vez publicado, no). Se evaluó devolver error o auto-excluir destinos no disponibles al armar un paquete nuevo; se adoptó devolver 409 con el detalle de qué IDs no están disponibles, siguiendo el mismo criterio explícito-antes-que-implícito usado en el resto del proyecto, en vez de silenciar la exclusión. No se implementó `PUT`/`DELETE` de paquetes por no estar dentro del alcance declarado en el README para este dominio; si se requiere corregir un paquete no publicado, queda como vacío del caso a resolver más adelante (documentado, no implementado a medias).
+
+#### Validación
+
+Backend probado localmente con `uvicorn` (puerto 8003): creación de un paquete con 2 destinos (100.000 + 50.000, margen 0.20) devuelve precio 180.000; publicar el paquete fija `publicado: true` y `precio: 180.000`; publicar de nuevo devuelve 409; se cambió el costo base de uno de sus destinos a 999.999 y el precio publicado siguió en 180.000 (R7 verificado); crear un paquete con un solo destino (422, R3), con un destino repetido (422, R3), con más de 5 destinos (422, R3), con fecha de regreso anterior a la de salida (422, R5) y usando un destino marcado `disponible = 0` (409, cruce con R8) — todos los casos se comportaron como se esperaba. Se corrió `npm run build` en `frontend/` y compiló sin errores (19 módulos). La base de datos generada durante las pruebas se eliminó antes de este commit (excluida por `.gitignore`).

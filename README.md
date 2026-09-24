@@ -9,7 +9,7 @@ Caso de estudio de la asignatura **TI3V21 Programación Orientada a Objeto Segur
 | Backend | Python 3.10+ · **FastAPI** · `sqlite3` (librería estándar) |
 | Frontend | **React** (consume el backend como API REST/JSON) |
 | Fuente del caso | `Viajes_aventura.pdf` (antecedentes para el levantamiento de requerimientos) |
-| Estado | Dominio Destinos implementado (R1, R2, R8) — Paquetes, Clientes y Reservas pendientes |
+| Estado | Dominios Destinos (R1, R2, R8) y Paquetes (R3-R7) implementados — Clientes y Reservas pendientes |
 | Trazabilidad | `VALIDACION_IA.md`: bitácora de cambios apoyados por IA |
 
 ## Índice
@@ -119,7 +119,7 @@ Las reglas que no se expresan como restricción de columna (R3 combinación 2-5 
 
 ## 8. Estado actual y próximos pasos
 
-Esqueleto base listo y probado (backend + frontend + esquema SQLite + servidor único de entrega). Pendiente: desarrollar cada dominio (§7) — router y validaciones en `backend/app/`, pantalla en `frontend/src/` — más autenticación JWT, modelo UML formal y pruebas automatizadas, siguiendo el ciclo paso a paso registrado en `VALIDACION_IA.md`.
+Dominios Destinos (R1, R2, R8) y Paquetes (R3-R7) implementados y probados de punta a punta. Pendiente: dominios Clientes y seguridad (R9, R10, R11, R17) y Reservas (R12-R16) — router y validaciones en `backend/app/`, pantalla en `frontend/src/` — más autenticación JWT, modelo UML formal y pruebas automatizadas, siguiendo el ciclo paso a paso registrado en `VALIDACION_IA.md`.
 
 ## 9. Uso de IA y registro de cambios
 
