@@ -61,6 +61,50 @@ function Destinos({ adminToken }) {
     cargarDestinos()
   }
 
+  let tablaDestinos
+  if (cargando) {
+    tablaDestinos = <p className="estado-vacio">Cargando destinos…</p>
+  } else if (destinos.length === 0) {
+    tablaDestinos = <p className="estado-vacio">Todavía no hay destinos en el catálogo.</p>
+  } else {
+    tablaDestinos = (
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Zona</th>
+              <th>Duración</th>
+              <th>Costo base</th>
+              <th>Estado</th>
+              {adminToken && <th></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {destinos.map((d) => (
+              <tr key={d.id}>
+                <td data-label="Nombre">{d.nombre}</td>
+                <td data-label="Zona">{d.zona}</td>
+                <td data-label="Duración">{d.duracion_dias} días</td>
+                <td data-label="Costo base">${d.costo_base}</td>
+                <td data-label="Estado">
+                  <span className={`badge ${d.disponible ? 'badge-ok' : 'badge-off'}`}>
+                    {d.disponible ? 'Disponible' : 'No disponible'}
+                  </span>
+                </td>
+                {adminToken && (
+                  <td>
+                    <button onClick={() => eliminarDestino(d.id)}>Eliminar</button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
   return (
     <section>
       <h2>Catálogo de destinos</h2>
@@ -97,46 +141,7 @@ function Destinos({ adminToken }) {
 
       {error && <p className="error">{error}</p>}
 
-      {cargando ? (
-        <p className="estado-vacio">Cargando destinos…</p>
-      ) : destinos.length === 0 ? (
-        <p className="estado-vacio">Todavía no hay destinos en el catálogo.</p>
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Zona</th>
-                <th>Duración</th>
-                <th>Costo base</th>
-                <th>Estado</th>
-                {adminToken && <th></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {destinos.map((d) => (
-                <tr key={d.id}>
-                  <td data-label="Nombre">{d.nombre}</td>
-                  <td data-label="Zona">{d.zona}</td>
-                  <td data-label="Duración">{d.duracion_dias} días</td>
-                  <td data-label="Costo base">${d.costo_base}</td>
-                  <td data-label="Estado">
-                    <span className={`badge ${d.disponible ? 'badge-ok' : 'badge-off'}`}>
-                      {d.disponible ? 'Disponible' : 'No disponible'}
-                    </span>
-                  </td>
-                  {adminToken && (
-                    <td>
-                      <button onClick={() => eliminarDestino(d.id)}>Eliminar</button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {tablaDestinos}
     </section>
   )
 }

@@ -16,7 +16,11 @@ class TokenAdmin(BaseModel):
     token_type: str = "bearer"
 
 
-@router.post("/login", response_model=TokenAdmin)
+@router.post(
+    "/login",
+    response_model=TokenAdmin,
+    responses={401: {"description": "Correo o contraseña incorrectos"}},
+)
 def iniciar_sesion_admin(datos: AdminLogin):
     if not verificar_credenciales_admin(datos.correo, datos.password):
         raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")

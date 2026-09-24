@@ -39,6 +39,8 @@ ADMIN_PASSWORD = _valor_secreto("ADMIN_PASSWORD")
 
 _bearer = HTTPBearer()
 
+_MSG_TOKEN_INVALIDO = "Token inválido o expirado"
+
 
 def hash_password(password: str) -> str:
     """R10: la contraseña nunca se guarda tal como el cliente la escribió."""
@@ -65,7 +67,7 @@ def _decodificar(credenciales: HTTPAuthorizationCredentials) -> dict:
     try:
         return jwt.decode(credenciales.credentials, SECRET_KEY, algorithms=[ALGORITMO])
     except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+        raise HTTPException(status_code=401, detail=_MSG_TOKEN_INVALIDO)
 
 
 def obtener_cliente_actual(credenciales: HTTPAuthorizationCredentials = Depends(_bearer)) -> int:
@@ -76,7 +78,7 @@ def obtener_cliente_actual(credenciales: HTTPAuthorizationCredentials = Depends(
     try:
         cliente_id = int(payload["sub"])
     except (KeyError, ValueError):
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+        raise HTTPException(status_code=401, detail=_MSG_TOKEN_INVALIDO)
 
     conn = get_connection()
     try:
@@ -84,7 +86,7 @@ def obtener_cliente_actual(credenciales: HTTPAuthorizationCredentials = Depends(
     finally:
         conn.close()
     if existe is None:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+        raise HTTPException(status_code=401, detail=_MSG_TOKEN_INVALIDO)
 
     return cliente_id
 

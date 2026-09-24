@@ -40,7 +40,7 @@ function App() {
     }
     fetch('/api/clientes/me', { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
-        if (!res.ok) throw new Error()
+        if (!res.ok) throw new Error('El token de cliente guardado ya no es válido')
         return res.json()
       })
       .then(setPerfil)

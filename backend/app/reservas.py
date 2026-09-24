@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -8,6 +9,8 @@ from .database import get_connection
 from .seguridad import obtener_cliente_actual
 
 router = APIRouter(prefix="/api/reservas", tags=["reservas"])
+
+ClienteActual = Annotated[int, Depends(obtener_cliente_actual)]
 
 
 class ReservaCreate(BaseModel):
@@ -53,7 +56,7 @@ def _cargar_reserva(conn: sqlite3.Connection, reserva_id: int) -> Reserva:
 
 
 @router.get("", response_model=list[Reserva])
-def listar_mis_reservas(cliente_id: int = Depends(obtener_cliente_actual)):
+def listar_mis_reservas(cliente_id: ClienteActual):
     """R11: cada cliente ve únicamente sus propias reservas."""
     conn = get_connection()
     try:
@@ -69,8 +72,16 @@ def listar_mis_reservas(cliente_id: int = Depends(obtener_cliente_actual)):
         conn.close()
 
 
-@router.post("", response_model=Reserva, status_code=201)
-def crear_reserva(datos: ReservaCreate, cliente_id: int = Depends(obtener_cliente_actual)):
+@router.post(
+    "",
+    response_model=Reserva,
+    status_code=201,
+    responses={
+        404: {"description": "Paquete no encontrado"},
+        409: {"description": "Paquete no publicado, fecha vencida o sin cupo suficiente"},
+    },
+)
+def crear_reserva(datos: ReservaCreate, cliente_id: ClienteActual):
     conn = get_connection()
     # Autocommit + BEGIN IMMEDIATE manual: toma el lock de escritura antes de leer
     # el cupo, para que dos reservas concurrentes sobre el mismo paquete no puedan

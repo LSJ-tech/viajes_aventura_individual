@@ -13,7 +13,7 @@ from app import database
 from app.main import app
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     """Cada test corre contra una base SQLite temporal y aislada."""
     monkeypatch.setattr(database, "DB_PATH", tmp_path / "test.db")
@@ -22,7 +22,7 @@ def client(tmp_path, monkeypatch):
         yield c
 
 
-@pytest.fixture()
+@pytest.fixture
 def admin_headers(client):
     res = client.post("/api/admin/login", json={"correo": "admin@test.cl", "password": "adminClave123"})
     assert res.status_code == 200, res.text

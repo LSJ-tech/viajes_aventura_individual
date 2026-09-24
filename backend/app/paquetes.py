@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -8,6 +9,10 @@ from .database import get_connection
 from .seguridad import obtener_admin_actual
 
 router = APIRouter(prefix="/api/paquetes", tags=["paquetes"])
+
+AdminActual = Annotated[str, Depends(obtener_admin_actual)]
+
+_MSG_PAQUETE_NO_ENCONTRADO = "Paquete no encontrado"
 
 
 class PaqueteCreate(BaseModel):
@@ -123,20 +128,29 @@ def listar_paquetes():
         conn.close()
 
 
-@router.get("/{paquete_id}", response_model=Paquete)
+@router.get("/{paquete_id}", response_model=Paquete, responses={404: {"description": _MSG_PAQUETE_NO_ENCONTRADO}})
 def obtener_paquete(paquete_id: int):
     conn = get_connection()
     try:
         paquete = _cargar_paquete(conn, paquete_id)
         if paquete is None:
-            raise HTTPException(status_code=404, detail="Paquete no encontrado")
+            raise HTTPException(status_code=404, detail=_MSG_PAQUETE_NO_ENCONTRADO)
         return paquete
     finally:
         conn.close()
 
 
-@router.post("", response_model=Paquete, status_code=201)
-def crear_paquete(datos: PaqueteCreate, _admin: str = Depends(obtener_admin_actual)):
+@router.post(
+    "",
+    response_model=Paquete,
+    status_code=201,
+    responses={
+        400: {"description": "Datos inválidos"},
+        404: {"description": "Alguno de los destinos indicados no existe"},
+        409: {"description": "Alguno de los destinos indicados no está disponible"},
+    },
+)
+def crear_paquete(datos: PaqueteCreate, _admin: AdminActual):
     conn = get_connection()
     try:
         _validar_destinos_disponibles(conn, datos.destino_ids)
@@ -166,14 +180,21 @@ def crear_paquete(datos: PaqueteCreate, _admin: str = Depends(obtener_admin_actu
         conn.close()
 
 
-@router.post("/{paquete_id}/publicar", response_model=Paquete)
-def publicar_paquete(paquete_id: int, _admin: str = Depends(obtener_admin_actual)):
+@router.post(
+    "/{paquete_id}/publicar",
+    response_model=Paquete,
+    responses={
+        404: {"description": _MSG_PAQUETE_NO_ENCONTRADO},
+        409: {"description": "El paquete ya está publicado"},
+    },
+)
+def publicar_paquete(paquete_id: int, _admin: AdminActual):
     """R7: el precio se calcula y queda fijado en el momento de publicar."""
     conn = get_connection()
     try:
         row = conn.execute("SELECT * FROM paquetes WHERE id = ?", (paquete_id,)).fetchone()
         if row is None:
-            raise HTTPException(status_code=404, detail="Paquete no encontrado")
+            raise HTTPException(status_code=404, detail=_MSG_PAQUETE_NO_ENCONTRADO)
         if row["publicado"]:
             raise HTTPException(status_code=409, detail="El paquete ya está publicado")
 

@@ -22,6 +22,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 16 - Cobertura de pruebas faltante en Destinos (modificar)](#cambio-16---cobertura-de-pruebas-faltante-en-destinos-modificar)
 - [Cambio 17 - Segundo rediseño del frontend: navegación por pestañas y modo oscuro](#cambio-17---segundo-rediseño-del-frontend-navegación-por-pestañas-y-modo-oscuro)
 - [Cambio 18 - Hallazgos de SonarCloud: credencial hardcodeada y validación de datos no confiables](#cambio-18---hallazgos-de-sonarcloud-credencial-hardcodeada-y-validación-de-datos-no-confiables)
+- [Cambio 19 - Limpieza de code smells de SonarCloud (34 hallazgos)](#cambio-19---limpieza-de-code-smells-de-sonarcloud-34-hallazgos)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -379,4 +380,30 @@ Se evaluó silenciar el hallazgo de `ADMIN_PASSWORD` con un comentario `# NOSONA
 
 #### Validación
 
-`cd backend && py -3 -m pytest` — **43 pruebas, todas pasan** sin cambios (los tests fijan `JWT_SECRET_KEY`/`ADMIN_PASSWORD` por variable de entorno en `conftest.py` antes de importar `app.main`, así que `_valor_secreto()` las encuentra configuradas y no genera nada aleatorio). Se corrió `npm run build` en `frontend/` y compiló sin errores. Se levantó el backend local sin ninguna variable de entorno configurada y se confirmó en el log de arranque que genera y muestra un `JWT_SECRET_KEY` y un `ADMIN_PASSWORD` aleatorios distintos en cada ejecución. Queda pendiente confirmar en el dashboard de SonarCloud que el *Quality Gate* pasa a `OK` tras el análisis automático de este push.
+`cd backend && py -3 -m pytest` — **43 pruebas, todas pasan** sin cambios (los tests fijan `JWT_SECRET_KEY`/`ADMIN_PASSWORD` por variable de entorno en `conftest.py` antes de importar `app.main`, así que `_valor_secreto()` las encuentra configuradas y no genera nada aleatorio). Se corrió `npm run build` en `frontend/` y compiló sin errores. Se levantó el backend local sin ninguna variable de entorno configurada y se confirmó en el log de arranque que genera y muestra un `JWT_SECRET_KEY` y un `ADMIN_PASSWORD` aleatorios distintos en cada ejecución. Confirmado tras el push: el *Quality Gate* pasó a `OK` (0 bugs, 0 vulnerabilidades, 0 security hotspots).
+
+### Cambio 19 - Limpieza de code smells de SonarCloud (34 hallazgos)
+
+**Fecha:** 2026-09-24
+**Archivos modificados:** `backend/app/destinos.py`, `backend/app/paquetes.py`, `backend/app/clientes.py`, `backend/app/reservas.py`, `backend/app/admin.py`, `backend/app/seguridad.py`, `backend/tests/conftest.py`, `frontend/src/App.jsx`, `frontend/src/App.css`, `frontend/src/Destinos.jsx`, `frontend/src/Paquetes.jsx`, `frontend/src/Reservas.jsx`
+**Objetivo:** el usuario pidió limpiar los 34 `CODE_SMELL` restantes que reportaba SonarCloud (el *Quality Gate* ya estaba en `OK` desde el Cambio 18; estos no bloqueaban el gate, pero afectaban el *maintainability rating*). Se consultó `/api/issues/search?types=CODE_SMELL` para tener el detalle exacto por regla, archivo y línea.
+
+#### Implementación
+
+Por regla, de mayor a menor cantidad de ocurrencias:
+
+- **`python:S8415`** (18×, MAJOR) — "Document this HTTPException... in the responses parameter": cada `@router.get/post/put/delete` que podía lanzar un `HTTPException` (404, 409, 401, 400) ahora declara `responses={...}` con la descripción de cada código posible, en `destinos.py`, `paquetes.py`, `clientes.py`, `reservas.py` y `admin.py`. Mejora también la documentación interactiva en `/docs` (Swagger), uno de los motivos originales para elegir FastAPI (Cambio 2).
+- **`python:S8410`** (5×, MINOR) — "Use Annotated type hints for FastAPI dependency injection": se definieron alias `AdminActual = Annotated[str, Depends(obtener_admin_actual)]` y `ClienteActual = Annotated[int, Depends(obtener_cliente_actual)]` en cada router, reemplazando el patrón `param: tipo = Depends(...)` por `param: AdminActual`/`param: ClienteActual` — el estilo que la documentación actual de FastAPI recomienda.
+- **`python:S1192`** (3×, CRITICAL) — literales duplicados: se extrajeron constantes `_SQL_DESTINO_POR_ID`, `_MSG_DESTINO_NO_ENCONTRADO` (`destinos.py`) y `_MSG_TOKEN_INVALIDO` (`seguridad.py`, repetido 3 veces en `_decodificar`/`obtener_cliente_actual`).
+- **`javascript:S3358`** (3×, MAJOR) — ternarios anidados en JSX (`cargando ? … : lista.length === 0 ? … : …`) en `Destinos.jsx`, `Paquetes.jsx` y `Reservas.jsx`: se extrajeron a una variable (`tablaDestinos`/`tablaPaquetes`/`tablaReservas`) calculada con `if/else if/else` antes del `return`, y el JSX solo referencia esa variable.
+- **`python:S9083`** (2×, MINOR) — `@pytest.fixture()` sin argumentos: se sacaron los paréntesis vacíos (`@pytest.fixture`) en `conftest.py`, estilo recomendado por pytest cuando el decorador no recibe parámetros.
+- **`javascript:S7722`** (2× reportadas, 1 vigente, MINOR) — `throw new Error()` sin mensaje: se le agregó un mensaje descriptivo en `App.jsx`. La segunda ocurrencia que reportó Sonar (`Clientes.jsx:20`) ya no existe — ese código se movió a `App.jsx` en el Cambio 9, antes de que corriera este análisis.
+- **`css:S7924`** (1×, MAJOR) — contraste de texto insuficiente: se calculó el contraste real (fórmula WCAG) de todas las combinaciones de color de `App.css` con un script, en vez de adivinar cuál fallaba por el número de línea (desfasado tras los rediseños posteriores al análisis). Encontró 4 combinaciones bajo el mínimo de 4,5:1 en modo claro — `--success`/`--success-soft` (3,79), `--danger`/`--danger-soft` (3,83), `--warn`/`--warn-soft` (3,73) y `--muted`/`--surface-alt` (4,43) — usadas en los badges de estado y en los encabezados de tabla. Se oscurecieron ligeramente esos 4 colores (`--success` `#1f8a5f`→`#1b7c55`, `--danger` `#d64545`→`#c03e3e`, `--warn` `#b0701a`→`#9a6216`, `--muted` `#667167`→`#636e64`) hasta superar 4,5:1, manteniendo la misma paleta a simple vista. El modo oscuro ya cumplía (mínimo 5,29:1) y no se tocó.
+
+#### Revisión técnica
+
+Se evaluó dejar `python:S8415` sin corregir (documentar `responses=` es opcional y no cambia el comportamiento en tiempo de ejecución) frente a agregarlo en los 18 casos; se adoptó agregarlo porque el costo es bajo (un diccionario literal) y mejora directamente la documentación interactiva de la API, que es una de las razones declaradas para elegir FastAPI. Para el contraste de color, se evaluó ajustar solo la combinación que señalaba el número de línea del reporte (que ya no correspondía al código actual tras los rediseños del Cambio 13 y 17) frente a recalcular el contraste real de toda la paleta; se adoptó la segunda porque confiar en un número de línea desactualizado habría corregido la combinación equivocada y dejado las otras tres sin detectar.
+
+#### Validación
+
+`cd backend && py -3 -m pytest` — **43 pruebas, todas pasan** (los cambios de `Annotated` y `responses=` no alteran el comportamiento de los endpoints, solo su firma/documentación). Se corrió `npm run build` en `frontend/` sin errores y se verificó visualmente con Playwright (captura de la pestaña Paquetes) que los badges con los colores ajustados siguen siendo legibles y sin errores de consola. Los cuatro colores se validaron con un script Python que calcula el contraste WCAG exacto antes y después del cambio.

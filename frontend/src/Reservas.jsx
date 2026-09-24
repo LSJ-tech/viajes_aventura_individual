@@ -58,6 +58,42 @@ function Reservas({ token, perfil }) {
     )
   }
 
+  let tablaReservas
+  if (cargando) {
+    tablaReservas = <p className="estado-vacio">Cargando reservas…</p>
+  } else if (misReservas.length === 0) {
+    tablaReservas = <p className="estado-vacio">Todavía no tienes reservas.</p>
+  } else {
+    tablaReservas = (
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Paquete</th>
+              <th>Fechas</th>
+              <th>Personas</th>
+              <th>Total</th>
+              <th>Emitida</th>
+            </tr>
+          </thead>
+          <tbody>
+            {misReservas.map((r) => (
+              <tr key={r.id}>
+                <td data-label="Paquete">{r.paquete.nombre}</td>
+                <td data-label="Fechas">
+                  {r.paquete.fecha_salida} → {r.paquete.fecha_regreso}
+                </td>
+                <td data-label="Personas">{r.personas}</td>
+                <td data-label="Total">${r.total}</td>
+                <td data-label="Emitida">{r.fecha_emision}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
   return (
     <section>
       <h2>Reservas</h2>
@@ -85,38 +121,7 @@ function Reservas({ token, perfil }) {
       {error && <p className="error">{error}</p>}
 
       <h3>Mis reservas</h3>
-      {cargando ? (
-        <p className="estado-vacio">Cargando reservas…</p>
-      ) : misReservas.length === 0 ? (
-        <p className="estado-vacio">Todavía no tienes reservas.</p>
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Paquete</th>
-                <th>Fechas</th>
-                <th>Personas</th>
-                <th>Total</th>
-                <th>Emitida</th>
-              </tr>
-            </thead>
-            <tbody>
-              {misReservas.map((r) => (
-                <tr key={r.id}>
-                  <td data-label="Paquete">{r.paquete.nombre}</td>
-                  <td data-label="Fechas">
-                    {r.paquete.fecha_salida} → {r.paquete.fecha_regreso}
-                  </td>
-                  <td data-label="Personas">{r.personas}</td>
-                  <td data-label="Total">${r.total}</td>
-                  <td data-label="Emitida">{r.fecha_emision}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {tablaReservas}
     </section>
   )
 }
