@@ -19,6 +19,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 13 - Rediseño visual del frontend](#cambio-13---rediseño-visual-del-frontend)
 - [Cambio 14 - Auditoría contra el PDF del caso: tabla de supuestos explícitos](#cambio-14---auditoría-contra-el-pdf-del-caso-tabla-de-supuestos-explícitos)
 - [Cambio 15 - Condición de carrera en el cupo de Reservas (R14)](#cambio-15---condición-de-carrera-en-el-cupo-de-reservas-r14)
+- [Cambio 16 - Cobertura de pruebas faltante en Destinos (modificar)](#cambio-16---cobertura-de-pruebas-faltante-en-destinos-modificar)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -314,3 +315,21 @@ Se evaluó una conexión SQLite global en modo autocommit (cambiar `get_connecti
 #### Validación
 
 Se agregó `test_r14_dos_reservas_concurrentes_no_sobrevenden_el_cupo`, que lanza dos reservas de 1 persona en paralelo (con `threading.Thread`) contra un paquete con `cupo_maximo=1` y espera exactamente un `201` y un `409`. Para confirmar que la prueba realmente detecta el bug (no es un test que siempre pasa), se revirtió temporalmente `reservas.py` a la versión anterior al fix (con `git show HEAD:...`) y se corrió esa prueba: falló con `[201, 201]` (las dos reservas se aceptaron, sobrevendiendo el cupo de 1). Se restauró el fix y se corrió la suite completa: **38 pruebas, todas pasan**.
+
+### Cambio 16 - Cobertura de pruebas faltante en Destinos (modificar)
+
+**Fecha:** 2026-09-24
+**Archivo modificado:** `backend/tests/test_destinos.py`
+**Objetivo:** el usuario pidió seguir buscando mejoras; al revisar la cobertura de `test_destinos.py` (motivado por el hallazgo del Cambio 15) se detectó que `PUT /api/destinos/{id}` no tenía ningún test — ni un caso feliz, a pesar de que "modificar" está explícito en el alcance (README §4) — y que `test_escritura_requiere_sesion_de_administrador` (Cambio 10) solo cubría `POST`, dejando `PUT` y `DELETE` sin verificar que también exigen sesión de administrador.
+
+#### Implementación
+
+Se agregaron 5 pruebas: `test_modificar_destino_actualiza_los_campos` (caso feliz: crea un destino, lo modifica por completo y confirma que el listado refleja los nuevos valores), `test_modificar_destino_inexistente_da_404`, `test_modificar_destino_con_nombre_duplicado_da_409` (choca contra la `UNIQUE` de otro destino existente), `test_modificar_requiere_sesion_de_administrador` y `test_eliminar_requiere_sesion_de_administrador` (ambas sin header `Authorization`, esperando 401).
+
+#### Revisión técnica
+
+No hubo alternativas de diseño que evaluar: es cobertura de pruebas pura sobre comportamiento ya implementado (Cambios 6 y 10), sin cambios de código de producción.
+
+#### Validación
+
+`cd backend && py -3 -m pytest` — **43 pruebas, todas pasan** (38 anteriores + 5 nuevas).
