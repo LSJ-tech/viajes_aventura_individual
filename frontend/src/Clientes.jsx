@@ -1,38 +1,13 @@
-import { useEffect, useState } from 'react'
-
-const TOKEN_KEY = 'viajes_aventura_token'
+import { useState } from 'react'
 
 const registroVacio = { nombre: '', rut: '', correo: '', telefono: '', password: '' }
 const loginVacio = { correo: '', password: '' }
 
-function Clientes() {
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || '')
-  const [perfil, setPerfil] = useState(null)
+function Clientes({ perfil, onSesionIniciada, onCerrarSesion }) {
   const [modo, setModo] = useState('login')
   const [formRegistro, setFormRegistro] = useState(registroVacio)
   const [formLogin, setFormLogin] = useState(loginVacio)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    if (!token) return
-    fetch('/api/clientes/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => {
-        if (!res.ok) throw new Error()
-        return res.json()
-      })
-      .then(setPerfil)
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY)
-        setToken('')
-      })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const guardarSesion = (data) => {
-    localStorage.setItem(TOKEN_KEY, data.access_token)
-    setToken(data.access_token)
-    setPerfil(data.cliente)
-  }
 
   const registrar = async (e) => {
     e.preventDefault()
@@ -47,7 +22,7 @@ function Clientes() {
       setError(typeof data.detail === 'string' ? data.detail : 'No se pudo registrar la cuenta')
       return
     }
-    guardarSesion(data)
+    onSesionIniciada(data)
     setFormRegistro(registroVacio)
   }
 
@@ -64,14 +39,8 @@ function Clientes() {
       setError(data.detail || 'No se pudo iniciar sesión')
       return
     }
-    guardarSesion(data)
+    onSesionIniciada(data)
     setFormLogin(loginVacio)
-  }
-
-  const cerrarSesion = () => {
-    localStorage.removeItem(TOKEN_KEY)
-    setToken('')
-    setPerfil(null)
   }
 
   if (perfil) {
@@ -81,7 +50,7 @@ function Clientes() {
         <p>
           Sesión iniciada como <strong>{perfil.nombre}</strong> ({perfil.correo}).
         </p>
-        <button onClick={cerrarSesion}>Cerrar sesión</button>
+        <button onClick={onCerrarSesion}>Cerrar sesión</button>
       </section>
     )
   }

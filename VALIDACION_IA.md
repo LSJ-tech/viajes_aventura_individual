@@ -12,6 +12,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 6 - Dominio Destinos: CRUD y catálogo (R1, R2, R8)](#cambio-6---dominio-destinos-crud-y-catálogo-r1-r2-r8)
 - [Cambio 7 - Dominio Paquetes: armado, precio y publicación (R3-R7)](#cambio-7---dominio-paquetes-armado-precio-y-publicación-r3-r7)
 - [Cambio 8 - Dominio Clientes y seguridad: registro, login y JWT (R9, R10, R11, R17)](#cambio-8---dominio-clientes-y-seguridad-registro-login-y-jwt-r9-r10-r11-r17)
+- [Cambio 9 - Dominio Reservas: reservar, cupo y fecha vencida (R12-R16)](#cambio-9---dominio-reservas-reservar-cupo-y-fecha-vencida-r12-r16)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -169,3 +170,26 @@ Se evaluó usar `passlib[bcrypt]` (ya estaba en `requirements.txt` desde el Camb
 #### Validación
 
 Backend probado localmente con `uvicorn`: registro con un RUT válido (`12345678-5`, verificado por cálculo manual del dígito verificador) devuelve 201 con `access_token` y un `cliente` sin `rut` ni `telefono`; registro repitiendo el mismo correo (409); RUT con dígito verificador incorrecto (422); contraseña de 3 caracteres (422); login con la contraseña correcta devuelve un token nuevo; login con contraseña incorrecta (401); `GET /me` con el token devuelve el perfil correcto; `GET /me` sin header `Authorization` (401) y con un token inventado (401). Se corrió `npm run build` en `frontend/` y compiló sin errores (20 módulos). La base de datos generada durante las pruebas se eliminó antes de este commit (excluida por `.gitignore`).
+
+### Cambio 9 - Dominio Reservas: reservar, cupo y fecha vencida (R12-R16)
+
+**Fecha:** 2026-09-24
+**Archivos creados:** `backend/app/reservas.py`, `frontend/src/Reservas.jsx`
+**Archivos modificados:** `backend/app/main.py`, `frontend/src/App.jsx`, `frontend/src/Clientes.jsx`
+**Objetivo:** implementar el cuarto y último dominio del plan de trabajo (§7): reservar un paquete, calcular el total, controlar cupo y fecha vencida, y consultar el historial propio.
+
+#### Implementación
+
+Backend: router `reservas.py` con `GET /api/reservas` (historial propio) y `POST /api/reservas` (crear reserva), ambos protegidos con la dependencia `obtener_cliente_actual` del Cambio 8 — el `cliente_id` sale del JWT, nunca del cuerpo de la petición, así que un cliente no puede reservar ni consultar a nombre de otro (R11). `POST /api/reservas` valida en orden: el paquete existe (404); está publicado (409 — ver supuesto abajo); su `fecha_salida` no es anterior a hoy (409, R15); el cupo disponible (`cupo_maximo - SUM(personas)` de las reservas existentes) alcanza para la cantidad pedida (409, R14); y `personas >= 1` vía `Field(ge=1)` de Pydantic (422, R16). El `total` se calcula como `precio_publicado * personas` en el momento de crear la fila y quedar grabado en la tabla `reservas` (R13) — no se vuelve a tocar aunque cambie después el margen o el costo de un destino. `GET /api/reservas` filtra por `cliente_id` (R11) y devuelve cada reserva con un resumen del paquete asociado (nombre y fechas) mediante un `JOIN`.
+
+Frontend: se subió el estado de sesión (`token`, `perfil`) desde `Clientes.jsx` hasta `App.jsx`, que ahora hace el `fetch` a `/api/clientes/me` y pasa `perfil`/`onSesionIniciada`/`onCerrarSesion` como props — necesario para que el nuevo componente `Reservas.jsx` (hermano de `Clientes`) sepa si hay sesión activa sin duplicar el estado de login. `Reservas.jsx` muestra un selector con los paquetes publicados (nombre, precio, cupo disponible) y un formulario para reservar, además de una tabla con el historial propio (`GET /api/reservas`); si no hay sesión iniciada, solo invita a iniciar sesión.
+
+#### Revisión técnica
+
+Se evaluó permitir reservar paquetes no publicados (usando el precio calculado al vuelo) frente a exigir que estén publicados; se adoptó la segunda como supuesto explícito, documentado también en el código: un paquete sin publicar es un borrador que el administrador todavía puede estar ajustando, y R7 solo garantiza estabilidad de precio a partir de la publicación, así que permitir reservarlo antes introduciría el mismo problema que la planilla actual (cambiar de precio algo ya "vendido"). Se evaluó levantar el estado de sesión a un contexto de React (`useContext`) frente a subirlo al componente padre común (`App.jsx`) y pasarlo por props; con solo dos componentes consumidores (`Clientes` y `Reservas`) y una jerarquía de un solo nivel, pasar props es más simple y suficiente — un Context solo se justificaría si creciera la profundidad de componentes.
+
+#### Validación
+
+Backend probado localmente con `uvicorn`: reservar un paquete recién creado sin publicar (409); tras publicarlo (precio 180.000), reservar 2 personas devuelve total 360.000 (R13 verificado); con cupo máximo 3 y 2 ya reservadas, pedir 2 más devuelve 409 con el cupo restante en el mensaje (R14); reservar exactamente el cupo restante (1) devuelve 201; `personas: 0` devuelve 422 (R16); reservar un paquete publicado con `fecha_salida` en el pasado devuelve 409 (R15); `POST /api/reservas` sin header `Authorization` devuelve 401; se registró un segundo cliente y su `GET /api/reservas` devolvió `[]` a pesar de existir reservas de otro cliente (R11 verificado). Se corrió `npm run build` en `frontend/` y compiló sin errores (21 módulos). La base de datos generada durante las pruebas se eliminó antes de este commit (excluida por `.gitignore`).
+
+Con este cambio quedan implementados los cuatro dominios del plan de trabajo (§7) y las 17 reglas de negocio (R1-R17).

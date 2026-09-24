@@ -9,7 +9,7 @@ Caso de estudio de la asignatura **TI3V21 Programación Orientada a Objeto Segur
 | Backend | Python 3.10+ · **FastAPI** · `sqlite3` (librería estándar) |
 | Frontend | **React** (consume el backend como API REST/JSON) |
 | Fuente del caso | `Viajes_aventura.pdf` (antecedentes para el levantamiento de requerimientos) |
-| Estado | Dominios Destinos (R1, R2, R8), Paquetes (R3-R7) y Clientes y seguridad (R9, R10, R11, R17) implementados — Reservas pendiente |
+| Estado | Los 4 dominios implementados (R1-R17 completas) — pendiente modelo UML formal y pruebas automatizadas |
 | Trazabilidad | `VALIDACION_IA.md`: bitácora de cambios apoyados por IA |
 
 ## Índice
@@ -119,7 +119,7 @@ Las reglas que no se expresan como restricción de columna (R3 combinación 2-5 
 
 ## 8. Estado actual y próximos pasos
 
-Dominios Destinos (R1, R2, R8), Paquetes (R3-R7) y Clientes y seguridad (R9, R10, R11, R17) implementados y probados de punta a punta, incluyendo autenticación JWT y hash de contraseñas con `bcrypt`. Pendiente: dominio Reservas (R12-R16) — router y validaciones en `backend/app/`, pantalla en `frontend/src/` — más modelo UML formal y pruebas automatizadas, siguiendo el ciclo paso a paso registrado en `VALIDACION_IA.md`.
+Los 4 dominios del plan de trabajo (§7) están implementados y probados de punta a punta: Destinos (R1, R2, R8), Paquetes (R3-R7), Clientes y seguridad (R9, R10, R11, R17) y Reservas (R12-R16) — con autenticación JWT, hash de contraseñas con `bcrypt`, y las 17 reglas de negocio (R1-R17) cubiertas. Pendiente: modelo UML formal y pruebas automatizadas, siguiendo el ciclo paso a paso registrado en `VALIDACION_IA.md`.
 
 ## 9. Uso de IA y registro de cambios
 
