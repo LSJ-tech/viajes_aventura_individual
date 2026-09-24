@@ -122,37 +122,51 @@ function Paquetes({ adminToken }) {
 
       {cargando ? (
         <p>Cargando paquetes...</p>
+      ) : paquetes.length === 0 ? (
+        <p>Todavía no hay paquetes creados.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Fechas</th>
-              <th>Destinos</th>
-              <th>Cupo disp.</th>
-              <th>Precio</th>
-              <th>Estado</th>
-              {adminToken && <th></th>}
-            </tr>
-          </thead>
-          <tbody>
-            {paquetes.map((p) => (
-              <tr key={p.id}>
-                <td>{p.nombre}</td>
-                <td>
-                  {p.fecha_salida} → {p.fecha_regreso}
-                </td>
-                <td>{p.destinos.map((d) => d.nombre).join(', ')}</td>
-                <td>{p.cupo_disponible}</td>
-                <td>${p.precio}</td>
-                <td>{p.publicado ? 'Publicado' : 'Borrador'}</td>
-                {adminToken && (
-                  <td>{!p.publicado && <button onClick={() => publicarPaquete(p.id)}>Publicar</button>}</td>
-                )}
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Fechas</th>
+                <th>Destinos</th>
+                <th>Cupo disp.</th>
+                <th>Precio</th>
+                <th>Estado</th>
+                {adminToken && <th></th>}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {paquetes.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.nombre}</td>
+                  <td>
+                    {p.fecha_salida} → {p.fecha_regreso}
+                  </td>
+                  <td>{p.destinos.map((d) => d.nombre).join(', ')}</td>
+                  <td>{p.cupo_disponible}</td>
+                  <td>${p.precio}</td>
+                  <td>
+                    <span className={`badge ${p.publicado ? 'badge-ok' : 'badge-warn'}`}>
+                      {p.publicado ? 'Publicado' : 'Borrador'}
+                    </span>
+                  </td>
+                  {adminToken && (
+                    <td>
+                      {!p.publicado && (
+                        <button className="btn-publicar" onClick={() => publicarPaquete(p.id)}>
+                          Publicar
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   )

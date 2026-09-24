@@ -56,6 +56,7 @@ function App() {
   return (
     <main>
       <h1>Viajes Aventura</h1>
+      <p className="subtitulo">Sistema de gestión de agencia de viajes — TI3V21, INACAP Valparaíso</p>
       <Admin adminToken={adminToken} onSesionIniciada={iniciarSesionAdmin} onCerrarSesion={cerrarSesionAdmin} />
       <Clientes perfil={perfil} onSesionIniciada={iniciarSesion} onCerrarSesion={cerrarSesion} />
       <Destinos adminToken={adminToken} />

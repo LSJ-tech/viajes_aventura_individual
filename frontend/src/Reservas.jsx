@@ -90,30 +90,32 @@ function Reservas({ token, perfil }) {
       ) : misReservas.length === 0 ? (
         <p>Todavía no tienes reservas.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Paquete</th>
-              <th>Fechas</th>
-              <th>Personas</th>
-              <th>Total</th>
-              <th>Emitida</th>
-            </tr>
-          </thead>
-          <tbody>
-            {misReservas.map((r) => (
-              <tr key={r.id}>
-                <td>{r.paquete.nombre}</td>
-                <td>
-                  {r.paquete.fecha_salida} → {r.paquete.fecha_regreso}
-                </td>
-                <td>{r.personas}</td>
-                <td>${r.total}</td>
-                <td>{r.fecha_emision}</td>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Paquete</th>
+                <th>Fechas</th>
+                <th>Personas</th>
+                <th>Total</th>
+                <th>Emitida</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {misReservas.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.paquete.nombre}</td>
+                  <td>
+                    {r.paquete.fecha_salida} → {r.paquete.fecha_regreso}
+                  </td>
+                  <td>{r.personas}</td>
+                  <td>${r.total}</td>
+                  <td>{r.fecha_emision}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   )

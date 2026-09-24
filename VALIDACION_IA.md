@@ -16,6 +16,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 10 - Rol de administrador separado del de cliente](#cambio-10---rol-de-administrador-separado-del-de-cliente)
 - [Cambio 11 - Suite de pruebas automatizadas (pytest)](#cambio-11---suite-de-pruebas-automatizadas-pytest)
 - [Cambio 12 - Modelo UML del dominio](#cambio-12---modelo-uml-del-dominio)
+- [Cambio 13 - Rediseño visual del frontend](#cambio-13---rediseño-visual-del-frontend)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -256,3 +257,22 @@ Se evaluó generar el diagrama como imagen (PNG/SVG) para incrustar en `Informe_
 #### Validación
 
 Revisión manual del diagrama contra el esquema real de `backend/app/database.py` y contra las 17 reglas de negocio: cada tabla, columna relevante y relación N:N (`paquete_destinos`) tiene su contraparte en el diagrama o en la tabla de reglas. No aplica ejecución de código (solo documentación).
+
+### Cambio 13 - Rediseño visual del frontend
+
+**Fecha:** 2026-09-24
+**Archivo modificado:** `frontend/src/App.css`
+**Archivos modificados (JSX, badges y tablas envueltas):** `frontend/src/App.jsx`, `frontend/src/Destinos.jsx`, `frontend/src/Paquetes.jsx`, `frontend/src/Reservas.jsx`
+**Objetivo:** el frontend usaba solo estilos HTML por defecto (sin colores, tablas sin bordes, botones nativos) desde el Cambio 6; se rediseñó visualmente sin tocar ninguna lógica de negocio.
+
+#### Implementación
+
+Se reescribió `App.css` con variables CSS (`:root`) para una paleta de color (teal como color primario, naranja como acento de advertencia), tarjetas (`section` con `border-radius`, sombra y borde) para cada dominio, tipografía con la pila de fuentes del sistema, formularios e inputs con estados de foco visibles, y una tabla con encabezado diferenciado y filas con hover. Se agregaron clases `.badge`/`.badge-ok`/`.badge-off`/`.badge-warn` para los estados "Disponible/No disponible" (Destinos) y "Publicado/Borrador" (Paquetes), reemplazando el texto plano. Cada tabla se envolvió en un `<div className="table-wrap">` con `overflow-x: auto` para que no rompa el layout en pantallas angostas. Se agregó un subtítulo bajo el `<h1>` en `App.jsx` y un mensaje "Todavía no hay..." cuando un catálogo está vacío (antes mostraba una tabla sin filas, sin contexto). Se agregó una media query a 520px que apila los campos del formulario a ancho completo en móvil.
+
+#### Revisión técnica
+
+Se evaluó una librería de componentes (p. ej. Tailwind o Material UI) frente a CSS propio con variables; se adoptó CSS propio porque el proyecto ya está en la recta final (entrega 5 de octubre) y sumar una dependencia nueva de build para un rediseño visual no aporta a las reglas de negocio evaluadas — variables CSS ya resuelven la necesidad real (consistencia de color/espaciado) sin el costo de aprendizaje ni el peso extra en el bundle.
+
+#### Validación
+
+Se instaló Playwright temporalmente (fuera del repo, en el directorio de trabajo de la sesión) para levantar `npm run dev` + el backend con datos de prueba (destinos y paquetes creados vía API) y tomar capturas de pantalla reales del resultado en escritorio (1280px) y en móvil (390px, iPhone 12). Ambas se revisaron visualmente: tarjetas, badges de color, tabla con encabezado y hover, tabs de "Iniciar sesión/Registrarme" con el estado activo resaltado, y el formulario apilándose correctamente en el ancho móvil sin desbordes. `console --errors` del navegador no arrojó ningún error. La base de datos de prueba y el build generado se eliminaron antes de este commit.
