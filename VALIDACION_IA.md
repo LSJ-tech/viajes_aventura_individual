@@ -26,6 +26,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 20 - Informe Word puesto al día](#cambio-20---informe-word-puesto-al-día)
 - [Cambio 21 - Atributo `lang` del HTML corregido a español](#cambio-21---atributo-lang-del-html-corregido-a-español)
 - [Cambio 22 - README puesto al día (37→43 pruebas y variables de Render ya configuradas)](#cambio-22---readme-puesto-al-día-3743-pruebas-y-variables-de-render-ya-configuradas)
+- [Cambio 23 - README del frontend: de plantilla genérica de Vite a descripción real](#cambio-23---readme-del-frontend-de-plantilla-genérica-de-vite-a-descripción-real)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -466,3 +467,21 @@ No hubo alternativas que evaluar: es sincronizar el documento principal del proy
 #### Validación
 
 Revisión manual línea por línea de `README.md` (`grep` de "37 ", "Pendiente"/"pendiente") para confirmar que no quedaran más referencias desactualizadas. No aplica ejecución de código (solo documentación).
+
+### Cambio 23 - README del frontend: de plantilla genérica de Vite a descripción real
+
+**Fecha:** 2026-09-24
+**Archivos modificados:** `frontend/README.md`, `frontend/package.json`
+**Objetivo:** el usuario volvió a preguntar si quedaba algo por mejorar; se revisó qué archivos del proyecto no se habían tocado desde su creación (Cambio 6, `npm create vite@latest`) y `frontend/README.md` seguía siendo el boilerplate genérico del template de Vite ("React Compiler", enlaces al template de TypeScript), sin ninguna mención al proyecto real — inconsistente con el resto de la documentación, mantenida al día en cada cambio.
+
+#### Implementación
+
+Se reemplazó `frontend/README.md` por una versión corta que apunta al `README.md` de la raíz (fuente de verdad del proyecto) y documenta solo lo específico de esta carpeta: comandos de desarrollo (`npm install && npm run dev`) y build (`npm run build`, con su destino `../backend/static/`). De paso, se cambió `"name": "frontend"` a `"name": "viajes-aventura-frontend"` en `package.json` (quedaba con el nombre genérico que `npm create vite` le puso al directorio).
+
+#### Revisión técnica
+
+Se evaluó borrar `frontend/README.md` directamente (ya que toda la documentación real vive en la raíz) frente a dejar una versión corta con redirección; se adoptó la segunda porque es la convención esperada por quien navega a una subcarpeta de un monorepo — un `README.md` vacío o ausente en `frontend/` es más confuso que uno corto que explique dónde está la documentación completa.
+
+#### Validación
+
+`npm run build` en `frontend/` compiló sin errores tras el cambio de `package.json`. El build generado se eliminó antes de este commit (excluido por `.gitignore`).
