@@ -9,15 +9,33 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .database import get_connection
 
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "clave-de-desarrollo-cambiar-en-produccion")
 ALGORITMO = "HS256"
 EXPIRACION_MINUTOS = 60 * 12
+
+
+def _valor_secreto(variable_entorno: str) -> str:
+    """Lee un secreto desde el entorno; si falta, genera uno aleatorio solo para
+    esta ejecución. Nunca un literal fijo en el código: quedaría visible en el
+    repositorio (que es público) y serviría como credencial real si alguien
+    olvida configurar la variable en producción."""
+    valor = os.environ.get(variable_entorno)
+    if valor:
+        return valor
+    generado = secrets.token_urlsafe(16)
+    print(
+        f"[seguridad] {variable_entorno} no está configurada; se generó un valor "
+        f"aleatorio solo para esta ejecución: {generado}"
+    )
+    return generado
+
+
+SECRET_KEY = _valor_secreto("JWT_SECRET_KEY")
 
 # El caso describe un único administrador (uno de los socios, ver Viajes_aventura.pdf
 # §1.3), no una tabla de administradores: sus credenciales se configuran por variable
 # de entorno en vez de guardarse en la base de datos.
 ADMIN_CORREO = os.environ.get("ADMIN_EMAIL", "admin@viajesaventura.cl")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "cambiar-esta-clave-en-produccion")
+ADMIN_PASSWORD = _valor_secreto("ADMIN_PASSWORD")
 
 _bearer = HTTPBearer()
 

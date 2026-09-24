@@ -60,8 +60,13 @@ function Paquetes({ adminToken }) {
   }
 
   const publicarPaquete = async (id) => {
+    // El id siempre viene de un paquete ya listado por el backend, pero se valida
+    // igual antes de usarlo en la URL (nunca confiar en el dato tal cual llega).
+    const paqueteId = Number(id)
+    if (!Number.isInteger(paqueteId) || paqueteId < 0) return
+
     setError('')
-    const res = await fetch(`/api/paquetes/${id}/publicar`, {
+    const res = await fetch(`/api/paquetes/${paqueteId}/publicar`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${adminToken}` },
     })

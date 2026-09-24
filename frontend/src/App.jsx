@@ -10,6 +10,17 @@ import Reservas from './Reservas'
 const TOKEN_KEY = 'viajes_aventura_token'
 const ADMIN_TOKEN_KEY = 'viajes_aventura_admin_token'
 
+// Un JWT es siempre header.payload.firma en base64url; valida esa forma antes de
+// persistir cualquier valor en localStorage (evita guardar datos no confiables
+// si la respuesta del backend llegara alterada o incompleta).
+const FORMATO_JWT = /^[\w-]+\.[\w-]+\.[\w-]+$/
+
+function guardarToken(clave, valor) {
+  if (typeof valor === 'string' && FORMATO_JWT.test(valor)) {
+    localStorage.setItem(clave, valor)
+  }
+}
+
 const TABS = [
   { id: 'destinos', label: 'Destinos', Icon: IconMapPin },
   { id: 'paquetes', label: 'Paquetes', Icon: IconPackage },
@@ -40,7 +51,7 @@ function App() {
   }, [token])
 
   const iniciarSesion = (data) => {
-    localStorage.setItem(TOKEN_KEY, data.access_token)
+    guardarToken(TOKEN_KEY, data.access_token)
     setToken(data.access_token)
     setPerfil(data.cliente)
   }
@@ -52,7 +63,7 @@ function App() {
   }
 
   const iniciarSesionAdmin = (accessToken) => {
-    localStorage.setItem(ADMIN_TOKEN_KEY, accessToken)
+    guardarToken(ADMIN_TOKEN_KEY, accessToken)
     setAdminToken(accessToken)
   }
 

@@ -44,7 +44,12 @@ function Destinos({ adminToken }) {
   }
 
   const eliminarDestino = async (id) => {
-    const res = await fetch(`/api/destinos/${id}`, {
+    // El id siempre viene de un destino ya listado por el backend, pero se valida
+    // igual antes de usarlo en la URL (nunca confiar en el dato tal cual llega).
+    const destinoId = Number(id)
+    if (!Number.isInteger(destinoId) || destinoId < 0) return
+
+    const res = await fetch(`/api/destinos/${destinoId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${adminToken}` },
     })

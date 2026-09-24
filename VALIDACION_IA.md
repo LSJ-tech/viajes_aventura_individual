@@ -21,6 +21,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 15 - Condición de carrera en el cupo de Reservas (R14)](#cambio-15---condición-de-carrera-en-el-cupo-de-reservas-r14)
 - [Cambio 16 - Cobertura de pruebas faltante en Destinos (modificar)](#cambio-16---cobertura-de-pruebas-faltante-en-destinos-modificar)
 - [Cambio 17 - Segundo rediseño del frontend: navegación por pestañas y modo oscuro](#cambio-17---segundo-rediseño-del-frontend-navegación-por-pestañas-y-modo-oscuro)
+- [Cambio 18 - Hallazgos de SonarCloud: credencial hardcodeada y validación de datos no confiables](#cambio-18---hallazgos-de-sonarcloud-credencial-hardcodeada-y-validación-de-datos-no-confiables)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -355,3 +356,27 @@ Se evaluó un toggle manual de tema claro/oscuro (con estado en `localStorage`) 
 #### Validación
 
 Se instaló Playwright nuevamente (como en el Cambio 13) para levantar `npm run dev` + backend con datos de prueba y capturar: escritorio con la pestaña Destinos activa, cambio a la pestaña Paquetes (confirma que el switch de tabs funciona y no recarga la página), el panel flotante de Admin abierto (confirma la animación/posicionamiento), la misma vista en modo oscuro (`colorScheme: 'dark'` de Playwright, sin tocar la configuración del sistema), y Destinos/Paquetes en móvil (390px) confirmando que las tablas se ven como tarjetas apiladas, no como scroll horizontal. `console --errors` no arrojó ningún error en ninguna de las capturas. La base de datos y el build generados durante las pruebas se eliminaron antes de este commit.
+
+### Cambio 18 - Hallazgos de SonarCloud: credencial hardcodeada y validación de datos no confiables
+
+**Fecha:** 2026-09-24
+**Archivos modificados:** `backend/app/seguridad.py`, `frontend/src/App.jsx`, `frontend/src/Destinos.jsx`, `frontend/src/Paquetes.jsx`
+**Objetivo:** el usuario conectó el repositorio a SonarCloud (análisis automático de GitHub) y compartió el enlace del dashboard; el *Quality Gate* estaba en `ERROR` por el rating de seguridad. Se consultó la API pública de SonarCloud (`/api/qualitygates/project_status` y `/api/issues/search`) para obtener el detalle exacto, ya que el dashboard es una SPA y no se puede leer con un fetch simple.
+
+#### Implementación
+
+SonarCloud reportó 8 issues de tipo `VULNERABILITY` (3 reglas distintas):
+
+1. **`python:S2068`** (MAJOR) — `backend/app/seguridad.py:20`: el valor por defecto de `ADMIN_PASSWORD` (`"cambiar-esta-clave-en-produccion"`) es un literal que Sonar detecta como credencial hardcodeada — válido, ya que queda visible en el código de un repositorio público (mismo riesgo ya identificado y mitigado en Render en el Cambio 10, pero que seguía en el código fuente). Se reemplazó por `_valor_secreto()`, una función que lee la variable de entorno y, si falta, genera un valor aleatorio con `secrets.token_urlsafe(16)` solo para esa ejecución (nunca un string fijo), imprimiéndolo en el log de arranque para que siga siendo utilizable en desarrollo local. Se aplicó el mismo tratamiento a `JWT_SECRET_KEY`, que tenía el mismo problema aunque Sonar no lo haya marcado en esta regla — un secreto de firma JWT previsible es más grave que la contraseña del admin, porque permitiría forjar tokens válidos (incluido rol admin) sin conocer ninguna contraseña.
+2. **`jssecurity:S8475`** "Browser Storage Poisoning" (MINOR) — `frontend/src/App.jsx:43,55`: `localStorage.setItem` con el token recibido del backend sin validar su forma. Se agregó `guardarToken()`, que solo persiste el valor si cumple el formato de un JWT (`header.payload.firma` en base64url) vía una expresión regular, antes de guardarlo.
+3. **`jssecurity:S7044`** "API Traversal" (MAJOR) y **`jssecurity:S8476`** "Client-Side Request Forgery" (MINOR) — `frontend/src/Destinos.jsx:47` y `frontend/src/Paquetes.jsx:64`: `fetch` construye la URL interpolando un `id` sin validar (`` `/api/destinos/${id}` ``). Aunque el `id` siempre proviene de un registro ya listado por el propio backend (no de un campo de texto libre), se agregó una validación explícita (`Number.isInteger(id) && id >= 0`, se corta la función si no cumple) antes de interpolarlo en la URL, cerrando la vía aunque en el futuro ese `id` llegara de un origen menos confiable.
+
+Sonar también había marcado `frontend/src/Clientes.jsx:32` con la misma regla `S8475`, pero esa línea ya no contiene el `localStorage.setItem`: ese código se movió a `App.jsx` en el Cambio 9 (cuando se subió el estado de sesión al componente padre) — el análisis de SonarCloud corresponde a un commit anterior a ese refactor, así que ese hallazgo puntual ya no aplica al código actual.
+
+#### Revisión técnica
+
+Se evaluó silenciar el hallazgo de `ADMIN_PASSWORD` con un comentario `# NOSONAR` (falso positivo declarado) frente a corregirlo de verdad; se descartó la primera porque el hallazgo es correcto — hay un literal parecido a una contraseña real en el código — y silenciarlo sin cambiar nada deja el problema de fondo intacto. Se evaluó exigir la variable de entorno sin ningún valor por defecto (fallar el arranque si falta) frente a generar un valor aleatorio; se adoptó la segunda porque mantiene el proyecto usable para correrlo localmente sin configuración previa (requisito implícito de un proyecto académico que se va a revisar), sin dejar un secreto adivinable en el código.
+
+#### Validación
+
+`cd backend && py -3 -m pytest` — **43 pruebas, todas pasan** sin cambios (los tests fijan `JWT_SECRET_KEY`/`ADMIN_PASSWORD` por variable de entorno en `conftest.py` antes de importar `app.main`, así que `_valor_secreto()` las encuentra configuradas y no genera nada aleatorio). Se corrió `npm run build` en `frontend/` y compiló sin errores. Se levantó el backend local sin ninguna variable de entorno configurada y se confirmó en el log de arranque que genera y muestra un `JWT_SECRET_KEY` y un `ADMIN_PASSWORD` aleatorios distintos en cada ejecución. Queda pendiente confirmar en el dashboard de SonarCloud que el *Quality Gate* pasa a `OK` tras el análisis automático de este push.
