@@ -13,6 +13,9 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 7 - Dominio Paquetes: armado, precio y publicación (R3-R7)](#cambio-7---dominio-paquetes-armado-precio-y-publicación-r3-r7)
 - [Cambio 8 - Dominio Clientes y seguridad: registro, login y JWT (R9, R10, R11, R17)](#cambio-8---dominio-clientes-y-seguridad-registro-login-y-jwt-r9-r10-r11-r17)
 - [Cambio 9 - Dominio Reservas: reservar, cupo y fecha vencida (R12-R16)](#cambio-9---dominio-reservas-reservar-cupo-y-fecha-vencida-r12-r16)
+- [Cambio 10 - Rol de administrador separado del de cliente](#cambio-10---rol-de-administrador-separado-del-de-cliente)
+- [Cambio 11 - Suite de pruebas automatizadas (pytest)](#cambio-11---suite-de-pruebas-automatizadas-pytest)
+- [Cambio 12 - Modelo UML del dominio](#cambio-12---modelo-uml-del-dominio)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -193,3 +196,63 @@ Se evaluó permitir reservar paquetes no publicados (usando el precio calculado 
 Backend probado localmente con `uvicorn`: reservar un paquete recién creado sin publicar (409); tras publicarlo (precio 180.000), reservar 2 personas devuelve total 360.000 (R13 verificado); con cupo máximo 3 y 2 ya reservadas, pedir 2 más devuelve 409 con el cupo restante en el mensaje (R14); reservar exactamente el cupo restante (1) devuelve 201; `personas: 0` devuelve 422 (R16); reservar un paquete publicado con `fecha_salida` en el pasado devuelve 409 (R15); `POST /api/reservas` sin header `Authorization` devuelve 401; se registró un segundo cliente y su `GET /api/reservas` devolvió `[]` a pesar de existir reservas de otro cliente (R11 verificado). Se corrió `npm run build` en `frontend/` y compiló sin errores (21 módulos). La base de datos generada durante las pruebas se eliminó antes de este commit (excluida por `.gitignore`).
 
 Con este cambio quedan implementados los cuatro dominios del plan de trabajo (§7) y las 17 reglas de negocio (R1-R17).
+
+### Cambio 10 - Rol de administrador separado del de cliente
+
+**Fecha:** 2026-09-24
+**Archivos creados:** `backend/app/admin.py`, `frontend/src/Admin.jsx`
+**Archivos modificados:** `backend/app/seguridad.py`, `backend/app/clientes.py`, `backend/app/destinos.py`, `backend/app/paquetes.py`, `backend/app/main.py`, `frontend/src/App.jsx`, `frontend/src/Destinos.jsx`, `frontend/src/Paquetes.jsx`, `README.md`
+**Objetivo:** cerrar una brecha de seguridad detectada al revisar el proyecto ya completo: los endpoints de administración (crear/editar/eliminar destinos, crear/publicar paquetes) no tenían ninguna autenticación — cualquiera con la URL podía modificar el catálogo. El caso describe explícitamente un rol "Administrador" separado del cliente (`Viajes_aventura.pdf` §1.3), que hasta este cambio no estaba modelado.
+
+#### Implementación
+
+`seguridad.py`: el JWT ahora incluye un claim `rol` (`"cliente"` o `"admin"`) además de `sub`; `crear_token(sujeto, rol)` lo recibe explícito. `obtener_cliente_actual` ahora exige `rol == "cliente"` (antes solo validaba que el `sub` fuera un id de cliente existente) y se agrega `obtener_admin_actual`, que exige `rol == "admin"`. Como el caso describe un único administrador (uno de los socios, no una lista de administradores), sus credenciales se leen de variables de entorno (`ADMIN_EMAIL`, `ADMIN_PASSWORD`) en vez de una tabla nueva; `verificar_credenciales_admin` las compara con `secrets.compare_digest` (comparación a tiempo constante, evita timing attacks). `admin.py` agrega `POST /api/admin/login`. Se protegieron con `Depends(obtener_admin_actual)`: `POST/PUT/DELETE /api/destinos` y `POST /api/paquetes` + `POST /api/paquetes/{id}/publicar`; los `GET` (catálogo) siguen públicos, ya que el caso los describe como consulta abierta para clientes.
+
+Frontend: nuevo componente `Admin.jsx` con login de administrador (token guardado en `localStorage` bajo una clave separada de la del cliente). El estado `adminToken` se subió a `App.jsx` y se pasa como prop a `Destinos.jsx` y `Paquetes.jsx`, que ahora envían el header `Authorization` en sus llamadas de escritura y ocultan los formularios de creación/botones de eliminar/publicar cuando no hay sesión de administrador activa.
+
+#### Revisión técnica
+
+Se evaluó agregar un campo `es_admin` en la tabla `clientes` (reutilizando el modelo de autenticación ya existente) frente a un administrador único fuera de la base de datos; se adoptó la segunda porque el caso es explícito en que hay un solo administrador (un socio), no una lista abierta de cuentas con privilegios variables — modelar una tabla completa de roles habría sido una implementación a medias sin un caso de uso real (no hay forma en el caso de que se registre un segundo administrador). Se documenta como riesgo conocido: las credenciales de administrador de desarrollo quedan visibles en el código fuente (repositorio público), así que es obligatorio configurar `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`JWT_SECRET_KEY` como variables de entorno reales en Render antes de considerar el despliegue seguro (ver README §6); esto no se pudo hacer desde este entorno por no contar con acceso al dashboard de Render.
+
+#### Validación
+
+Backend probado localmente con `uvicorn`: crear un destino sin token (401); login de administrador con credenciales incorrectas (401) y correctas (200, devuelve token); crear un destino con el token de administrador (201); crear un destino con un token de **cliente** válido (403, rol incorrecto); `GET /api/clientes/me` con un token de **administrador** (403, rol incorrecto); `GET /api/clientes/me` con un token de cliente sigue funcionando (200) — confirma que separar los roles no rompió el dominio Clientes existente. Se corrió `npm run build` en `frontend/` y compiló sin errores (22 módulos).
+
+### Cambio 11 - Suite de pruebas automatizadas (pytest)
+
+**Fecha:** 2026-09-24
+**Archivos creados:** `backend/pytest.ini`, `backend/requirements-dev.txt`, `backend/tests/conftest.py`, `backend/tests/test_destinos.py`, `backend/tests/test_paquetes.py`, `backend/tests/test_clientes.py`, `backend/tests/test_reservas.py`, `backend/tests/test_admin.py`
+**Objetivo:** cubrir con pruebas automatizadas las 17 reglas de negocio y la separación de roles del Cambio 10, en vez de depender solo de pruebas manuales con `curl` (como en los Cambios 6-10).
+
+#### Implementación
+
+`conftest.py` define el fixture `client`, que monkeypatchea `app.database.DB_PATH` a un archivo SQLite temporal por test (vía `tmp_path` de pytest) y crea un `TestClient` de FastAPI dentro de un `with` (para disparar el `lifespan` y correr `init_db()`), logrando aislamiento total entre pruebas sin tocar la base de datos real del proyecto. Las variables `JWT_SECRET_KEY`/`ADMIN_EMAIL`/`ADMIN_PASSWORD` se fijan con `os.environ.setdefault(...)` **antes** de importar `app.main`, porque `seguridad.py` las lee como constantes de módulo al importarse. Se agregaron funciones de apoyo (`crear_destino`, `crear_paquete`, `registrar_cliente`, `cliente_headers`) reutilizadas entre los 5 archivos de test. `backend/requirements-dev.txt` agrega `pytest` y `httpx` sobre `requirements.txt`, en un archivo separado para no instalar dependencias de testing en el build de producción de Render. `backend/pytest.ini` fija `pythonpath = .` para que `from app...` resuelva al correr `pytest` desde `backend/`.
+
+Cobertura por dominio: **Destinos** (R1 nombre único, R2 costo > 0, R8 borrado vs. baja lógica, escritura requiere admin); **Paquetes** (R3 mínimo/máximo/sin repetidos, R5 fechas/cupo, R6 cálculo de precio, R7 precio fijo tras publicar y no se puede publicar dos veces, cruce con R8, escritura requiere admin); **Clientes** (R9 correo único y RUT inválido, R10 password hasheada — se verifica leyendo `password_hash` directo de la base de prueba y comparando contra el texto plano —, R17 `rut`/`telefono` nunca presentes en ninguna respuesta); **Reservas** (R11 aislamiento entre clientes y autenticación requerida, R12/R13 total fijado, R14 cupo, R15 fecha vencida, R16 personas ≥ 1, paquete debe estar publicado); **Admin** (login correcto/incorrecto, un token de cliente no sirve de administrador y viceversa).
+
+#### Revisión técnica
+
+Se evaluó una base de datos SQLite en memoria (`:memory:`) compartida entre tests frente a un archivo temporal por test; se adoptó el archivo temporal porque cada conexión nueva a `:memory:` en `sqlite3` crea una base distinta (no hay una sola base en memoria compartida entre conexiones sin configuración adicional como URI mode), y el código de la aplicación abre una conexión nueva por request (`get_connection()` en cada función) — un archivo temporal real evita ese problema sin tener que tocar el código de producción para las pruebas. Se evaluó un archivo `requirements.txt` único con `pytest` incluido frente a separar `requirements-dev.txt`; se adoptó la segunda para que el build de Render (que instala `requirements.txt`) no cargue dependencias de testing en producción.
+
+#### Validación
+
+`cd backend && py -3 -m pytest` — **37 pruebas, todas pasan**, en aproximadamente 4 segundos. Sin advertencias tras ajustar la clave JWT de prueba a 32+ bytes (la de desarrollo original de 16 bytes generaba un `InsecureKeyLengthWarning` de `pyjwt`).
+
+### Cambio 12 - Modelo UML del dominio
+
+**Fecha:** 2026-09-24
+**Archivo creado:** `docs/modelo-uml.md`
+**Archivo modificado:** `README.md`
+**Objetivo:** dejar un modelo UML formal del dominio (destinos, paquetes, clientes, reservas), pendiente desde el Cambio 9.
+
+#### Implementación
+
+Diagrama de clases en sintaxis Mermaid (se renderiza directo en GitHub, sin herramientas externas): `Destino`, `Paquete`, `Cliente`, `Reserva` con sus atributos derivados del esquema SQL (`backend/app/database.py`) y una clase `Administrador` marcada `<<no persistido>>` para reflejar el Cambio 10 (no es una tabla, son credenciales por variable de entorno). Las asociaciones muestran las multiplicidades de negocio: `Paquete "2..5" o-- "0..*" Destino` (R3, R4), `Cliente "1" --> "0..*" Reserva` y `Paquete "1" --> "0..*" Reserva` (R11, R12). Se agregó una tabla que mapea cada elemento del diagrama a la(s) regla(s) de negocio que representa, y una sección de notas de diseño que aclara que los métodos del diagrama (`calcularPrecio`, `publicar`, `cupoDisponible`, `verificarPassword`) son responsabilidades de negocio conceptuales — en el código actual (FastAPI + SQL directo, sin ORM) viven como funciones en los routers, no como métodos de una clase.
+
+#### Revisión técnica
+
+Se evaluó generar el diagrama como imagen (PNG/SVG) para incrustar en `Informe_Viajes_Aventura.docx` frente a Mermaid en Markdown; se adoptó Mermaid porque se renderiza automáticamente en GitHub (donde vive el código, la fuente de verdad) sin depender de herramientas de conversión externas, y porque el diagrama seguirá vigente a medida que el modelo cambie sin tener que regenerar una imagen a mano. Queda pendiente decidir si se incrusta también una versión renderizada en el informe Word cuando se conozca la guía oficial de evaluación (ver nota al inicio de `Informe_Viajes_Aventura.docx`).
+
+#### Validación
+
+Revisión manual del diagrama contra el esquema real de `backend/app/database.py` y contra las 17 reglas de negocio: cada tabla, columna relevante y relación N:N (`paquete_destinos`) tiene su contraparte en el diagrama o en la tabla de reglas. No aplica ejecución de código (solo documentación).

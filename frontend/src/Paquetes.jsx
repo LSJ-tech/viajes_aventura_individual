@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 const formVacio = { nombre: '', fecha_salida: '', fecha_regreso: '', cupo_maximo: '', margen: '0.20' }
 
-function Paquetes() {
+function Paquetes({ adminToken }) {
   const [paquetes, setPaquetes] = useState([])
   const [destinosDisponibles, setDestinosDisponibles] = useState([])
   const [seleccionados, setSeleccionados] = useState([])
@@ -40,7 +40,7 @@ function Paquetes() {
     setError('')
     const res = await fetch('/api/paquetes', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
       body: JSON.stringify({
         ...form,
         cupo_maximo: Number(form.cupo_maximo),
@@ -61,7 +61,10 @@ function Paquetes() {
 
   const publicarPaquete = async (id) => {
     setError('')
-    const res = await fetch(`/api/paquetes/${id}/publicar`, { method: 'POST' })
+    const res = await fetch(`/api/paquetes/${id}/publicar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminToken}` },
+    })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       setError(data.detail || 'No se pudo publicar el paquete')
@@ -74,40 +77,46 @@ function Paquetes() {
     <section>
       <h2>Paquetes</h2>
 
-      <form onSubmit={crearPaquete} className="form-destino">
-        <input placeholder="Nombre" value={form.nombre} onChange={actualizarCampo('nombre')} required />
-        <input type="date" value={form.fecha_salida} onChange={actualizarCampo('fecha_salida')} required />
-        <input type="date" value={form.fecha_regreso} onChange={actualizarCampo('fecha_regreso')} required />
-        <input
-          type="number"
-          min="1"
-          placeholder="Cupo máximo"
-          value={form.cupo_maximo}
-          onChange={actualizarCampo('cupo_maximo')}
-          required
-        />
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="Margen (0.20 = 20%)"
-          value={form.margen}
-          onChange={actualizarCampo('margen')}
-          required
-        />
+      {adminToken && (
+        <form onSubmit={crearPaquete} className="form-destino">
+          <input placeholder="Nombre" value={form.nombre} onChange={actualizarCampo('nombre')} required />
+          <input type="date" value={form.fecha_salida} onChange={actualizarCampo('fecha_salida')} required />
+          <input type="date" value={form.fecha_regreso} onChange={actualizarCampo('fecha_regreso')} required />
+          <input
+            type="number"
+            min="1"
+            placeholder="Cupo máximo"
+            value={form.cupo_maximo}
+            onChange={actualizarCampo('cupo_maximo')}
+            required
+          />
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="Margen (0.20 = 20%)"
+            value={form.margen}
+            onChange={actualizarCampo('margen')}
+            required
+          />
 
-        <fieldset className="fieldset-destinos">
-          <legend>Destinos (elige entre 2 y 5)</legend>
-          {destinosDisponibles.map((d) => (
-            <label key={d.id}>
-              <input type="checkbox" checked={seleccionados.includes(d.id)} onChange={() => alternarDestino(d.id)} />
-              {d.nombre} (${d.costo_base})
-            </label>
-          ))}
-        </fieldset>
+          <fieldset className="fieldset-destinos">
+            <legend>Destinos (elige entre 2 y 5)</legend>
+            {destinosDisponibles.map((d) => (
+              <label key={d.id}>
+                <input
+                  type="checkbox"
+                  checked={seleccionados.includes(d.id)}
+                  onChange={() => alternarDestino(d.id)}
+                />
+                {d.nombre} (${d.costo_base})
+              </label>
+            ))}
+          </fieldset>
 
-        <button type="submit">Crear paquete</button>
-      </form>
+          <button type="submit">Crear paquete</button>
+        </form>
+      )}
 
       {error && <p className="error">{error}</p>}
 
@@ -123,7 +132,7 @@ function Paquetes() {
               <th>Cupo disp.</th>
               <th>Precio</th>
               <th>Estado</th>
-              <th></th>
+              {adminToken && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -137,7 +146,9 @@ function Paquetes() {
                 <td>{p.cupo_disponible}</td>
                 <td>${p.precio}</td>
                 <td>{p.publicado ? 'Publicado' : 'Borrador'}</td>
-                <td>{!p.publicado && <button onClick={() => publicarPaquete(p.id)}>Publicar</button>}</td>
+                {adminToken && (
+                  <td>{!p.publicado && <button onClick={() => publicarPaquete(p.id)}>Publicar</button>}</td>
+                )}
               </tr>
             ))}
           </tbody>

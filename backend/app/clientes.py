@@ -80,7 +80,7 @@ def registrar_cliente(datos: ClienteRegistro):
         row = conn.execute(
             "SELECT id, nombre, correo FROM clientes WHERE id = ?", (cursor.lastrowid,)
         ).fetchone()
-        return TokenRespuesta(access_token=crear_token(row["id"]), cliente=_perfil(row))
+        return TokenRespuesta(access_token=crear_token(row["id"], "cliente"), cliente=_perfil(row))
     finally:
         conn.close()
 
@@ -95,7 +95,7 @@ def iniciar_sesion(datos: ClienteLogin):
         if row is None or not verificar_password(datos.password, row["password_hash"]):
             raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
 
-        return TokenRespuesta(access_token=crear_token(row["id"]), cliente=_perfil(row))
+        return TokenRespuesta(access_token=crear_token(row["id"], "cliente"), cliente=_perfil(row))
     finally:
         conn.close()
 

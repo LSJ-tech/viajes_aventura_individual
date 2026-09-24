@@ -1,9 +1,10 @@
 import sqlite3
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .database import get_connection
+from .seguridad import obtener_admin_actual
 
 router = APIRouter(prefix="/api/destinos", tags=["destinos"])
 
@@ -60,7 +61,7 @@ def obtener_destino(destino_id: int):
 
 
 @router.post("", response_model=Destino, status_code=201)
-def crear_destino(datos: DestinoDatos):
+def crear_destino(datos: DestinoDatos, _admin: str = Depends(obtener_admin_actual)):
     conn = get_connection()
     try:
         try:
@@ -79,7 +80,7 @@ def crear_destino(datos: DestinoDatos):
 
 
 @router.put("/{destino_id}", response_model=Destino)
-def actualizar_destino(destino_id: int, datos: DestinoDatos):
+def actualizar_destino(destino_id: int, datos: DestinoDatos, _admin: str = Depends(obtener_admin_actual)):
     conn = get_connection()
     try:
         actual = conn.execute("SELECT * FROM destinos WHERE id = ?", (destino_id,)).fetchone()
@@ -101,7 +102,7 @@ def actualizar_destino(destino_id: int, datos: DestinoDatos):
 
 
 @router.delete("/{destino_id}", response_model=Destino)
-def eliminar_destino(destino_id: int):
+def eliminar_destino(destino_id: int, _admin: str = Depends(obtener_admin_actual)):
     """R8: sin paquetes asociados se elimina; con paquetes asociados se marca no disponible."""
     conn = get_connection()
     try:

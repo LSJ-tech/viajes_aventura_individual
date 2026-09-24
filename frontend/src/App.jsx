@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import Admin from './Admin'
 import Clientes from './Clientes'
 import Destinos from './Destinos'
 import Paquetes from './Paquetes'
 import Reservas from './Reservas'
 
 const TOKEN_KEY = 'viajes_aventura_token'
+const ADMIN_TOKEN_KEY = 'viajes_aventura_admin_token'
 
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || '')
   const [perfil, setPerfil] = useState(null)
+  const [adminToken, setAdminToken] = useState(() => localStorage.getItem(ADMIN_TOKEN_KEY) || '')
 
   useEffect(() => {
     if (!token) {
@@ -40,12 +43,23 @@ function App() {
     setPerfil(null)
   }
 
+  const iniciarSesionAdmin = (accessToken) => {
+    localStorage.setItem(ADMIN_TOKEN_KEY, accessToken)
+    setAdminToken(accessToken)
+  }
+
+  const cerrarSesionAdmin = () => {
+    localStorage.removeItem(ADMIN_TOKEN_KEY)
+    setAdminToken('')
+  }
+
   return (
     <main>
       <h1>Viajes Aventura</h1>
+      <Admin adminToken={adminToken} onSesionIniciada={iniciarSesionAdmin} onCerrarSesion={cerrarSesionAdmin} />
       <Clientes perfil={perfil} onSesionIniciada={iniciarSesion} onCerrarSesion={cerrarSesion} />
-      <Destinos />
-      <Paquetes />
+      <Destinos adminToken={adminToken} />
+      <Paquetes adminToken={adminToken} />
       <Reservas token={token} perfil={perfil} />
     </main>
   )

@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from .admin import router as admin_router
 from .clientes import router as clientes_router
 from .database import init_db
 from .destinos import router as destinos_router
@@ -29,6 +30,7 @@ app.include_router(destinos_router)
 app.include_router(paquetes_router)
 app.include_router(clientes_router)
 app.include_router(reservas_router)
+app.include_router(admin_router)
 
 STATIC_DIR = Path(__file__).parent.parent / "static"
 if STATIC_DIR.exists():

@@ -1,10 +1,11 @@
 import sqlite3
 from datetime import date
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from .database import get_connection
+from .seguridad import obtener_admin_actual
 
 router = APIRouter(prefix="/api/paquetes", tags=["paquetes"])
 
@@ -135,7 +136,7 @@ def obtener_paquete(paquete_id: int):
 
 
 @router.post("", response_model=Paquete, status_code=201)
-def crear_paquete(datos: PaqueteCreate):
+def crear_paquete(datos: PaqueteCreate, _admin: str = Depends(obtener_admin_actual)):
     conn = get_connection()
     try:
         _validar_destinos_disponibles(conn, datos.destino_ids)
@@ -166,7 +167,7 @@ def crear_paquete(datos: PaqueteCreate):
 
 
 @router.post("/{paquete_id}/publicar", response_model=Paquete)
-def publicar_paquete(paquete_id: int):
+def publicar_paquete(paquete_id: int, _admin: str = Depends(obtener_admin_actual)):
     """R7: el precio se calcula y queda fijado en el momento de publicar."""
     conn = get_connection()
     try:
