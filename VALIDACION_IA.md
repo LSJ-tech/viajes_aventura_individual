@@ -18,6 +18,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 12 - Modelo UML del dominio](#cambio-12---modelo-uml-del-dominio)
 - [Cambio 13 - Rediseño visual del frontend](#cambio-13---rediseño-visual-del-frontend)
 - [Cambio 14 - Auditoría contra el PDF del caso: tabla de supuestos explícitos](#cambio-14---auditoría-contra-el-pdf-del-caso-tabla-de-supuestos-explícitos)
+- [Cambio 15 - Condición de carrera en el cupo de Reservas (R14)](#cambio-15---condición-de-carrera-en-el-cupo-de-reservas-r14)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -295,3 +296,21 @@ Se evaluó implementar la cancelación de reservas (uno de los tres vacíos que 
 #### Validación
 
 Verificación manual, sección por sección del PDF, contra el código y la documentación existente; no aplica ejecución de código. Se regeneró `Informe_Viajes_Aventura.docx` con el script de `docx` y se confirmó por `python-docx` que las 3 tablas del documento (reglas, vacíos y supuestos, plan de trabajo) tienen las filas y columnas esperadas.
+
+### Cambio 15 - Condición de carrera en el cupo de Reservas (R14)
+
+**Fecha:** 2026-09-24
+**Archivos modificados:** `backend/app/reservas.py`, `backend/tests/test_reservas.py`
+**Objetivo:** el usuario pidió revisar `reservas.py` en busca de mejoras. Se detectó que `crear_reserva` leía el cupo ya reservado (`SUM(personas)`) y recién después insertaba la nueva reserva, sin ningún bloqueo entre ambos pasos — dos reservas concurrentes sobre el mismo paquete podían leer el mismo cupo disponible antes de que la otra confirmara la suya, y ambas pasar la validación de R14. Es, literalmente, el mismo problema que el caso describe que sufre la agencia hoy con el cuaderno de papel (§4: "6 reservas aceptadas por sobre el cupo del paquete").
+
+#### Implementación
+
+Se envolvió todo el cuerpo de `crear_reserva` (desde la lectura del paquete hasta el `INSERT` de la reserva) en una transacción `BEGIN IMMEDIATE`. Para poder emitir `BEGIN IMMEDIATE` manualmente, se pone `conn.isolation_level = None` (modo autocommit) **solo en esa conexión local de la función**, sin tocar `get_connection()` en `database.py` (que sigue con el modo de transacción implícita por defecto que usan el resto de los endpoints — cambiarlo globalmente habría alterado el comportamiento de `conn.rollback()` en `paquetes.py`/`destinos.py`, que depende de ese modo). `BEGIN IMMEDIATE` toma el lock de escritura de SQLite de inmediato (no al primer `INSERT`, como hace el modo por defecto), así que una segunda transacción que intente lo mismo sobre el mismo archivo de base de datos queda bloqueada hasta que la primera haga `commit()` o `rollback()` — momento en el cual vuelve a leer el cupo ya actualizado. Se agregó `except Exception: conn.rollback(); raise` para liberar el lock también cuando se lanza un `HTTPException` (404/409) a mitad de la transacción.
+
+#### Revisión técnica
+
+Se evaluó una conexión SQLite global en modo autocommit (cambiar `get_connection()` en `database.py`) frente a activar el modo autocommit solo dentro de `crear_reserva`; se adoptó la segunda para minimizar el radio de impacto del cambio — el resto del código (Destinos, Paquetes, Clientes) sigue funcionando exactamente igual que antes, y el único endpoint que de verdad tiene una carrera de lectura-luego-escritura sobre un valor compartido (el cupo) es este. Se evaluó una expresión SQL atómica (`INSERT ... SELECT ... WHERE cupo >= ?`) frente a `BEGIN IMMEDIATE` + chequeo en Python; se adoptó `BEGIN IMMEDIATE` porque mantiene la lógica de negocio (mensajes de error específicos por regla: paquete no encontrado, no publicado, fecha vencida, cupo insuficiente) legible en Python en vez de comprimirla en una sola consulta SQL difícil de mantener.
+
+#### Validación
+
+Se agregó `test_r14_dos_reservas_concurrentes_no_sobrevenden_el_cupo`, que lanza dos reservas de 1 persona en paralelo (con `threading.Thread`) contra un paquete con `cupo_maximo=1` y espera exactamente un `201` y un `409`. Para confirmar que la prueba realmente detecta el bug (no es un test que siempre pasa), se revirtió temporalmente `reservas.py` a la versión anterior al fix (con `git show HEAD:...`) y se corrió esa prueba: falló con `[201, 201]` (las dos reservas se aceptaron, sobrevendiendo el cupo de 1). Se restauró el fix y se corrió la suite completa: **38 pruebas, todas pasan**.

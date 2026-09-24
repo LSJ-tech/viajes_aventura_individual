@@ -72,7 +72,14 @@ def listar_mis_reservas(cliente_id: int = Depends(obtener_cliente_actual)):
 @router.post("", response_model=Reserva, status_code=201)
 def crear_reserva(datos: ReservaCreate, cliente_id: int = Depends(obtener_cliente_actual)):
     conn = get_connection()
+    # Autocommit + BEGIN IMMEDIATE manual: toma el lock de escritura antes de leer
+    # el cupo, para que dos reservas concurrentes sobre el mismo paquete no puedan
+    # leer el mismo cupo disponible y sobrevenderlo (el mismo problema de R14 que
+    # hoy sufre la agencia con el cuaderno de papel, ver §4 del caso).
+    conn.isolation_level = None
     try:
+        conn.execute("BEGIN IMMEDIATE")
+
         paquete = conn.execute("SELECT * FROM paquetes WHERE id = ?", (datos.paquete_id,)).fetchone()
         if paquete is None:
             raise HTTPException(status_code=404, detail="Paquete no encontrado")
@@ -110,5 +117,8 @@ def crear_reserva(datos: ReservaCreate, cliente_id: int = Depends(obtener_client
         )
         conn.commit()
         return _cargar_reserva(conn, cursor.lastrowid)
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()

@@ -1,3 +1,5 @@
+import threading
+
 from conftest import cliente_headers, crear_destino, crear_paquete, registrar_cliente
 
 
@@ -86,3 +88,29 @@ def test_r11_cada_cliente_ve_unicamente_sus_propias_reservas(client, admin_heade
 
     reservas_a = client.get("/api/reservas", headers=headers_a).json()
     assert len(reservas_a) == 1
+
+
+def test_r14_dos_reservas_concurrentes_no_sobrevenden_el_cupo(client, admin_headers):
+    """Regresión: sin el BEGIN IMMEDIATE, ambos hilos podían leer el mismo cupo
+    disponible antes de que el otro insertara su reserva, y las dos pasaban."""
+    paquete = _paquete_publicado(client, admin_headers, cupo_maximo=1)
+    headers_a = cliente_headers(client, correo="carrera_a@test.cl")
+    headers_b = cliente_headers(client, correo="carrera_b@test.cl", rut="9668077-5")
+
+    codigos = {}
+
+    def reservar(nombre, headers):
+        res = client.post("/api/reservas", json={"paquete_id": paquete["id"], "personas": 1}, headers=headers)
+        codigos[nombre] = res.status_code
+
+    hilo_a = threading.Thread(target=reservar, args=("a", headers_a))
+    hilo_b = threading.Thread(target=reservar, args=("b", headers_b))
+    hilo_a.start()
+    hilo_b.start()
+    hilo_a.join()
+    hilo_b.join()
+
+    assert sorted(codigos.values()) == [201, 409]
+
+    reservado_total = client.get(f"/api/paquetes/{paquete['id']}").json()["cupo_disponible"]
+    assert reservado_total == 0
