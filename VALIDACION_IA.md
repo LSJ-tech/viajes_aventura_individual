@@ -24,6 +24,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 18 - Hallazgos de SonarCloud: credencial hardcodeada y validación de datos no confiables](#cambio-18---hallazgos-de-sonarcloud-credencial-hardcodeada-y-validación-de-datos-no-confiables)
 - [Cambio 19 - Limpieza de code smells de SonarCloud (34 hallazgos)](#cambio-19---limpieza-de-code-smells-de-sonarcloud-34-hallazgos)
 - [Cambio 20 - Informe Word puesto al día](#cambio-20---informe-word-puesto-al-día)
+- [Cambio 21 - Atributo `lang` del HTML corregido a español](#cambio-21---atributo-lang-del-html-corregido-a-español)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -428,3 +429,21 @@ No hubo decisiones de diseño que evaluar: es sincronizar un documento de estado
 #### Validación
 
 Se verificó con `python-docx` que los tres párrafos actualizados contienen el texto esperado ("43 pruebas", "BEGIN IMMEDIATE", "SonarCloud") y que las 3 tablas del documento siguen intactas.
+
+### Cambio 21 - Atributo `lang` del HTML corregido a español
+
+**Fecha:** 2026-09-24
+**Archivo modificado:** `frontend/index.html`
+**Objetivo:** el usuario preguntó de nuevo si quedaba algo por mejorar, con `index.html` abierto en el editor. Revisándolo se encontró `<html lang="en">`, aunque todo el contenido de la aplicación (textos, formularios, mensajes de error) está en español.
+
+#### Implementación
+
+Se cambió a `<html lang="es-CL">` (español de Chile, coherente con el resto del caso: RUT chileno, INACAP Valparaíso, precios en pesos). Se confirmó con `grep` que era el único atributo `lang` en todo `frontend/`.
+
+#### Revisión técnica
+
+No había alternativa que evaluar: es un error de hecho, no una decisión de diseño. El atributo `lang` incorrecto hace que los lectores de pantalla apliquen reglas de pronunciación en inglés a texto en español (accesibilidad real, no solo cosmético) y afecta cómo los navegadores ofrecen traducción automática.
+
+#### Validación
+
+`npm run build` en `frontend/` compiló sin errores. El build generado durante la verificación se eliminó antes de este commit (excluido por `.gitignore`).
