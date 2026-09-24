@@ -9,6 +9,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 3 - Plan de trabajo por dominio](#cambio-3---plan-de-trabajo-por-dominio)
 - [Cambio 4 - Servidor único: FastAPI sirve el frontend compilado](#cambio-4---servidor-único-fastapi-sirve-el-frontend-compilado)
 - [Cambio 5 - Esqueleto base: backend FastAPI, frontend React y esquema SQLite](#cambio-5---esqueleto-base-backend-fastapi-frontend-react-y-esquema-sqlite)
+- [Cambio 6 - Dominio Destinos: CRUD y catálogo (R1, R2, R8)](#cambio-6---dominio-destinos-crud-y-catálogo-r1-r2-r8)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -103,3 +104,24 @@ Se evaluó usar Create React App frente a Vite para el frontend; se eligió Vite
 #### Validación
 
 Se levantó el backend con `uvicorn app.main:app` y se verificó `GET /api/health` (200, `{"status":"ok"}`) y `GET /docs` (200, Swagger UI). Se confirmó por SQL directo (`sqlite_master`) que las 5 tablas se crean correctamente al iniciar la aplicación. Se corrió `npm run build` en `frontend/` y se verificó que el resultado se genera en `backend/static/`. Se volvió a levantar el backend con ese build ya presente y se confirmó que `GET /` devuelve el `index.html` de React desde el mismo puerto que la API — validando el modo de servidor único documentado en el Cambio 4. La base de datos y el build generados durante la prueba se eliminaron antes de este commit (quedan excluidos por `.gitignore`, se generan localmente).
+
+### Cambio 6 - Dominio Destinos: CRUD y catálogo (R1, R2, R8)
+
+**Fecha:** 2026-09-24
+**Archivos creados:** `backend/app/destinos.py`, `frontend/src/Destinos.jsx`
+**Archivos modificados:** `backend/app/main.py`, `frontend/src/App.jsx`, `frontend/src/App.css`
+**Objetivo:** implementar el primer dominio del plan de trabajo (§7): registrar, modificar, dejar no disponible y listar destinos del catálogo.
+
+#### Implementación
+
+Backend: router `destinos.py` con `GET /api/destinos` (listado, con filtro opcional `solo_disponibles`), `GET /api/destinos/{id}`, `POST /api/destinos`, `PUT /api/destinos/{id}` y `DELETE /api/destinos/{id}`. La validación de tipos y rangos (nombre no vacío, `duracion_dias > 0`, `costo_base > 0` — R1, R2) queda a cargo de Pydantic (`Field(gt=0)`, `min_length=1`). La unicidad del nombre (R1) se resuelve dejando que la `UNIQUE` de la tabla falle y capturando `sqlite3.IntegrityError` para devolver 409, en vez de hacer un `SELECT` previo (evita una condición de carrera entre el chequeo y el insert). El borrado (R8) primero revisa si el destino aparece en `paquete_destinos`: si no aparece, se hace `DELETE` real; si aparece, se marca `disponible = 0` en vez de borrarlo, conservando su contenido en los paquetes ya armados. Se registró el router en `main.py`.
+
+Frontend: componente `Destinos.jsx` con formulario de alta y tabla del catálogo (nombre, zona, duración, costo base, estado disponible/no disponible, botón eliminar), consumiendo los mismos endpoints. `App.jsx` se simplificó para renderizar este componente en vez del health-check de prueba.
+
+#### Revisión técnica
+
+Se evaluó validar la unicidad del nombre con un `SELECT` previo al `INSERT` frente a capturar la excepción de la restricción `UNIQUE` existente en el esquema; se adoptó la segunda porque el esquema ya la declara (Cambio 5) y evita una consulta extra además de la condición de carrera propia del patrón check-then-act. Para R8 se evaluó pedir al cliente que indique si quiere "eliminar" o "deshabilitar" frente a que el propio backend decida según si el destino está en uso; se adoptó la segunda porque la regla de negocio ya define el criterio de forma determinista y no admite ambigüedad ni deja la decisión en manos del cliente HTTP.
+
+#### Validación
+
+Probado con el backend corriendo localmente (`uvicorn`, puertos 8001/8002 para no chocar con otras pruebas): creación (201) y verificación de los datos devueltos; creación duplicada del mismo nombre (409); costo base 0 rechazado por Pydantic (422); eliminación de un destino sin paquetes asociados (se borra, el listado posterior queda vacío); eliminación de un destino insertado manualmente en `paquete_destinos` (queda `disponible: false` y sigue apareciendo en el listado, no se borra). Se corrió `npm run build` en `frontend/` y compiló sin errores (18 módulos). La base de datos y el build generados durante las pruebas se eliminaron antes de este commit (excluidos por `.gitignore`).

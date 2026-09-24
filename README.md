@@ -9,7 +9,7 @@ Caso de estudio de la asignatura **TI3V21 Programación Orientada a Objeto Segur
 | Backend | Python 3.10+ · **FastAPI** · `sqlite3` (librería estándar) |
 | Frontend | **React** (consume el backend como API REST/JSON) |
 | Fuente del caso | `Viajes_aventura.pdf` (antecedentes para el levantamiento de requerimientos) |
-| Estado | Esqueleto backend/frontend listo — desarrollo de cada dominio en curso |
+| Estado | Dominio Destinos implementado (R1, R2, R8) — Paquetes, Clientes y Reservas pendientes |
 | Trazabilidad | `VALIDACION_IA.md`: bitácora de cambios apoyados por IA |
 
 ## Índice

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from .database import init_db
+from .destinos import router as destinos_router
 
 
 @asynccontextmanager
@@ -21,8 +22,10 @@ def health():
     return {"status": "ok"}
 
 
-# Cada dominio (destinos, paquetes, clientes, reservas) agrega su router aqui
-# con app.include_router(...) a medida que se implementa.
+app.include_router(destinos_router)
+
+# Los dominios restantes (paquetes, clientes, reservas) agregan su router aqui
+# con app.include_router(...) a medida que se implementan.
 
 STATIC_DIR = Path(__file__).parent.parent / "static"
 if STATIC_DIR.exists():
