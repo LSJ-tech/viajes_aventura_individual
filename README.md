@@ -9,7 +9,7 @@ Caso de estudio de la asignatura **TI3V21 Programación Orientada a Objeto Segur
 | Backend | Python 3.10+ · **FastAPI** · `sqlite3` (librería estándar) |
 | Frontend | **React** (consume el backend como API REST/JSON) |
 | Fuente del caso | `Viajes_aventura.pdf` (antecedentes para el levantamiento de requerimientos) |
-| Estado | Los 4 dominios implementados (R1-R17 completas), con rol de administrador separado del de cliente, 37 pruebas automatizadas y modelo UML |
+| Estado | Los 4 dominios implementados (R1-R17 completas), con rol de administrador, 43 pruebas automatizadas, modelo UML y SonarCloud sin hallazgos abiertos |
 | Trazabilidad | `VALIDACION_IA.md`: bitácora de cambios apoyados por IA |
 
 ## Índice
@@ -96,7 +96,8 @@ Arquitectura de dos partes, separadas en carpetas propias dentro del repositorio
 - **Frontend — `frontend/`**: **React + Vite**, consumiendo el backend únicamente vía HTTP/JSON (sin acceso directo a la base de datos). Pantallas para catálogo de destinos y paquetes (pública), registro/login/reservas de cliente (autenticada) y login de administrador.
 - **Roles y autorización** (`backend/app/seguridad.py`, `backend/app/admin.py`): dos roles separados por el claim `rol` del JWT. **Cliente**: se registra vía `POST /api/clientes/registro`, solo puede reservar y ver sus propias reservas (R11). **Administrador**: único (el caso describe un solo socio a cargo, ver §1.3 de `Viajes_aventura.pdf`), inicia sesión en `POST /api/admin/login` con credenciales fijadas por variable de entorno (`ADMIN_EMAIL`, `ADMIN_PASSWORD` — no hay tabla de administradores), y es el único que puede crear/editar/eliminar destinos y crear/publicar paquetes. El catálogo (`GET /api/destinos`, `GET /api/paquetes`) sigue siendo público, sin autenticación.
 - **Modelo UML**: diagrama de clases del dominio en [`docs/modelo-uml.md`](docs/modelo-uml.md), con la tabla de qué regla de negocio representa cada elemento.
-- **Pruebas automatizadas** (`backend/tests/`, `pytest` + `TestClient` de FastAPI): 37 pruebas que cubren las 17 reglas de negocio y la separación de roles, cada una contra una base SQLite temporal y aislada. Se corren con `cd backend && py -3 -m pip install -r requirements-dev.txt && py -3 -m pytest`.
+- **Pruebas automatizadas** (`backend/tests/`, `pytest` + `TestClient` de FastAPI): 43 pruebas que cubren las 17 reglas de negocio, la separación de roles y una prueba de concurrencia (dos reservas simultáneas con `threading.Thread`) que confirma que el cupo de un paquete no se puede sobrevender (R14, protegido con una transacción `BEGIN IMMEDIATE` en `backend/app/reservas.py`), cada una contra una base SQLite temporal y aislada. Se corren con `cd backend && py -3 -m pip install -r requirements-dev.txt && py -3 -m pytest`.
+- **Análisis estático** con [SonarCloud](https://sonarcloud.io/summary/overall?id=LSJ-tech_viajes_aventura_individual&branch=main) (análisis automático en cada push): Quality Gate en `OK`, 0 bugs, 0 vulnerabilidades, 0 code smells, 0 security hotspots.
 
 **Cómo se ejecutan juntos:**
 - **Durante el desarrollo**: dos procesos en paralelo.
@@ -104,14 +105,14 @@ Arquitectura de dos partes, separadas en carpetas propias dentro del repositorio
   - Frontend: `cd frontend && npm install && npm run dev` — Vite corre en `:5173` y su proxy (`vite.config.js`) reenvía todo `/api/*` al backend en `:8000`, sin necesidad de configurar CORS mientras se programa.
 - **Para la entrega/demo**: `cd frontend && npm run build` compila React directamente a `backend/static/` (configurado en `vite.config.js`); FastAPI detecta esa carpeta y la sirve como archivos estáticos (`StaticFiles` montado en `/`), quedando **un solo servidor y un solo puerto**: `cd backend && py -3 -m uvicorn app.main:app`. Así quien evalúe el proyecto levanta el sistema completo con un solo comando, sin instalar Node ni lidiar con CORS.
 - Probado de punta a punta el 2026-09-23: health check, Swagger (`/docs`), creación del esquema SQLite y build+servido estático, los tres funcionando (ver Cambio 6 en `VALIDACION_IA.md`).
-- **Despliegue**: [Render](https://render.com) (plan free), conectado a este repositorio con auto-deploy en cada push a `main`. Requiere estas variables de entorno configuradas en el dashboard de Render (Settings → Environment):
+- **Despliegue**: [Render](https://render.com) (plan free), conectado a este repositorio con auto-deploy en cada push a `main`. Ya tiene configuradas estas variables de entorno (Settings → Environment):
 
   | Variable | Para qué sirve |
   |---|---|
-  | `JWT_SECRET_KEY` | Firma los JWT de clientes y administrador. Sin esta variable, el backend usa un valor de desarrollo visible en el código fuente. |
-  | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Credenciales del único administrador del sistema (§ Roles y autorización). Sin esta variable, quedan las credenciales de desarrollo, también visibles en el código. |
+  | `JWT_SECRET_KEY` | Firma los JWT de clientes y administrador. |
+  | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Credenciales del único administrador del sistema (§ Roles y autorización). |
 
-  ⚠️ Como el repositorio es público, cualquiera puede leer los valores de desarrollo en `backend/app/seguridad.py`. **Configurar estas tres variables en Render es obligatorio antes de usar el despliegue en producción**, no solo recomendado.
+  Si alguna de las tres falta, `backend/app/seguridad.py` genera un valor aleatorio solo para esa ejecución (nunca un literal fijo en el código — ver Cambio 18 en `VALIDACION_IA.md`), así que en local funciona sin configurar nada, pero en Render conviene tenerlas fijas para que las sesiones no se invaliden en cada reinicio del servicio.
 
 ## 7. Plan de trabajo
 
@@ -140,7 +141,7 @@ Las reglas que no se expresan como restricción de columna (R3 combinación 2-5 
 
 ## 8. Estado actual y próximos pasos
 
-Los 4 dominios del plan de trabajo (§7) están implementados y probados de punta a punta: Destinos (R1, R2, R8), Paquetes (R3-R7), Clientes y seguridad (R9, R10, R11, R17) y Reservas (R12-R16) — con autenticación JWT, hash de contraseñas con `bcrypt`, rol de administrador separado del de cliente, 37 pruebas automatizadas (`backend/tests/`) y modelo UML ([`docs/modelo-uml.md`](docs/modelo-uml.md)). Pendiente: configurar `JWT_SECRET_KEY`/`ADMIN_EMAIL`/`ADMIN_PASSWORD` en Render (ver §6, obligatorio por ser repo público) y, si el tiempo alcanza, agregar más pruebas de integración end-to-end desde el frontend.
+Los 4 dominios del plan de trabajo (§7) están implementados y probados de punta a punta: Destinos (R1, R2, R8), Paquetes (R3-R7), Clientes y seguridad (R9, R10, R11, R17) y Reservas (R12-R16) — con autenticación JWT, hash de contraseñas con `bcrypt`, rol de administrador separado del de cliente, 43 pruebas automatizadas (`backend/tests/`), modelo UML ([`docs/modelo-uml.md`](docs/modelo-uml.md)) y SonarCloud sin hallazgos abiertos (Quality Gate en `OK`). Las variables `JWT_SECRET_KEY`/`ADMIN_EMAIL`/`ADMIN_PASSWORD` ya están configuradas en Render (ver §6). Pendiente, si el tiempo alcanza: más pruebas de integración end-to-end desde el frontend y ajustar la estructura de este documento cuando se conozca la guía oficial de evaluación.
 
 ## 9. Uso de IA y registro de cambios
 

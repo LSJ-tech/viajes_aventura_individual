@@ -25,6 +25,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 19 - Limpieza de code smells de SonarCloud (34 hallazgos)](#cambio-19---limpieza-de-code-smells-de-sonarcloud-34-hallazgos)
 - [Cambio 20 - Informe Word puesto al día](#cambio-20---informe-word-puesto-al-día)
 - [Cambio 21 - Atributo `lang` del HTML corregido a español](#cambio-21---atributo-lang-del-html-corregido-a-español)
+- [Cambio 22 - README puesto al día (37→43 pruebas y variables de Render ya configuradas)](#cambio-22---readme-puesto-al-día-3743-pruebas-y-variables-de-render-ya-configuradas)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -447,3 +448,21 @@ No había alternativa que evaluar: es un error de hecho, no una decisión de dis
 #### Validación
 
 `npm run build` en `frontend/` compiló sin errores. El build generado durante la verificación se eliminó antes de este commit (excluido por `.gitignore`).
+
+### Cambio 22 - README puesto al día (37→43 pruebas y variables de Render ya configuradas)
+
+**Fecha:** 2026-09-24
+**Archivo modificado:** `README.md`
+**Objetivo:** el usuario preguntó de nuevo si quedaba algo por mejorar; al revisar `README.md` completo (no solo el informe Word, ya corregido en el Cambio 20) aparecieron los mismos números desactualizados en tres lugares: "37 pruebas automatizadas" (ya son 43 desde el Cambio 16) y una nota de §8 pidiendo "configurar `JWT_SECRET_KEY`/`ADMIN_EMAIL`/`ADMIN_PASSWORD` en Render" que el usuario ya hizo (confirmado en el Cambio 18, antes de la limpieza de SonarCloud).
+
+#### Implementación
+
+Se actualizó la tabla de estado (§ encabezado), la sección "Pruebas automatizadas" y el párrafo final de §8 con: 43 pruebas (mencionando explícitamente la prueba de concurrencia y `BEGIN IMMEDIATE` de R14), y el estado de SonarCloud (Quality Gate `OK`, 0 hallazgos), con enlace al dashboard. Se agregó una línea nueva "Análisis estático" en §6 junto a "Pruebas automatizadas". Se reescribió la nota de §6 "Despliegue" para reflejar que las variables ya están configuradas en Render y que, si faltaran, `_valor_secreto()` (Cambio 18) genera un valor aleatorio en vez de exponer un literal fijo — la advertencia original ("cualquiera puede leer los valores de desarrollo") ya no aplica tal como estaba escrita, porque ese literal fijo ya no existe en el código.
+
+#### Revisión técnica
+
+No hubo alternativas que evaluar: es sincronizar el documento principal del proyecto con hechos ya validados (Cambios 16, 18, 19), igual que se hizo con el informe Word en el Cambio 20.
+
+#### Validación
+
+Revisión manual línea por línea de `README.md` (`grep` de "37 ", "Pendiente"/"pendiente") para confirmar que no quedaran más referencias desactualizadas. No aplica ejecución de código (solo documentación).
