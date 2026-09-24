@@ -76,7 +76,17 @@ Confirmadas por los socios; son reglas de operación, **no** requerimientos — 
 
 ## 5. Vacíos del caso y supuestos
 
-El caso no dice, por ejemplo, qué ocurre cuando un cliente desiste de una reserva, ni cómo se comporta un paquete cuando su temporada termina, ni quién puede modificar el catálogo. Cuando un dato no esté disponible, el criterio es adoptar un supuesto explícito y fundamentarlo técnicamente en `VALIDACION_IA.md`, no dejarlo implícito en el código.
+El caso no entrega toda la información necesaria para implementar el sistema. Cuando un dato no estaba disponible, el criterio fue adoptar un supuesto explícito y fundamentarlo técnicamente, en vez de dejarlo implícito en el código. Estos son los supuestos adoptados (cada uno con el detalle técnico en el `Cambio` correspondiente de `VALIDACION_IA.md`):
+
+| Vacío del caso | Supuesto adoptado | Fundamento |
+|---|---|---|
+| ¿Qué ocurre cuando un cliente desiste de una reserva? | No se implementa cancelación de reservas en esta versión. | El alcance (§4) define Reservas como "registro y autenticación de clientes, reservar un paquete, almacenar la reserva y consultar el historial propio" — cancelar no está entre esas funciones. |
+| ¿Cómo se comporta un paquete cuando su "temporada" termina? | No existe un estado de "temporada terminada": R5 modela el paquete con `fecha_salida`/`fecha_regreso` concretas (no una temporada abstracta como "Julio" o "Todo el año"), y R15 ya impide reservar un paquete cuya `fecha_salida` ya pasó. | R5, R15 — Cambio 9. |
+| ¿Quién puede modificar el catálogo? | Un único administrador (el caso describe un solo socio a cargo del catálogo, §1.3), autenticado por separado de los clientes. El catálogo de lectura (`GET`) sigue siendo público. | Cambio 10. |
+| ¿Se puede reservar un paquete que aún no está publicado? | No: mientras no está publicado su precio no está fijado (R7) y es un borrador que el administrador puede seguir ajustando. | R7 — Cambio 9 (revisión técnica). |
+| ¿Se puede editar o eliminar un paquete ya creado? | No: el alcance (§4) para Paquetes solo incluye crear, definir fechas/cupo, calcular el precio y consultar disponibilidad — no modificar ni eliminar. | Cambio 7 (revisión técnica). |
+| ¿Qué formato debe tener el RUT? | Se valida formato y dígito verificador con el algoritmo módulo 11 estándar chileno. | R9 — Cambio 8. |
+| ¿El catálogo de destinos y paquetes requiere sesión para consultarse? | No: el caso describe al cliente "consultando los paquetes disponibles" antes de registrarse (§1.3), así que el catálogo es público; solo reservar y ver el historial propio requieren sesión. | R11 — Cambios 9 y 10. |
 
 ## 6. Tecnología
 

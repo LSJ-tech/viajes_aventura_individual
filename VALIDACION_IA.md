@@ -17,6 +17,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 11 - Suite de pruebas automatizadas (pytest)](#cambio-11---suite-de-pruebas-automatizadas-pytest)
 - [Cambio 12 - Modelo UML del dominio](#cambio-12---modelo-uml-del-dominio)
 - [Cambio 13 - Rediseño visual del frontend](#cambio-13---rediseño-visual-del-frontend)
+- [Cambio 14 - Auditoría contra el PDF del caso: tabla de supuestos explícitos](#cambio-14---auditoría-contra-el-pdf-del-caso-tabla-de-supuestos-explícitos)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -276,3 +277,21 @@ Se evaluó una librería de componentes (p. ej. Tailwind o Material UI) frente a
 #### Validación
 
 Se instaló Playwright temporalmente (fuera del repo, en el directorio de trabajo de la sesión) para levantar `npm run dev` + el backend con datos de prueba (destinos y paquetes creados vía API) y tomar capturas de pantalla reales del resultado en escritorio (1280px) y en móvil (390px, iPhone 12). Ambas se revisaron visualmente: tarjetas, badges de color, tabla con encabezado y hover, tabs de "Iniciar sesión/Registrarme" con el estado activo resaltado, y el formulario apilándose correctamente en el ancho móvil sin desbordes. `console --errors` del navegador no arrojó ningún error. La base de datos de prueba y el build generado se eliminaron antes de este commit.
+
+### Cambio 14 - Auditoría contra el PDF del caso: tabla de supuestos explícitos
+
+**Fecha:** 2026-09-24
+**Archivos modificados:** `README.md`, `Informe_Viajes_Aventura.docx`
+**Objetivo:** releer `Viajes_aventura.pdf` completo y contrastarlo línea por línea contra la implementación (código + documentación) para detectar algo pendiente, a pedido del usuario.
+
+#### Implementación
+
+Se releyeron las 5 páginas del PDF (negocio, cómo trabajan hoy, entrevistas a los 3 socios, cifras de temporada, R1-R17 y alcance) y se verificó cada punto contra el código: las 17 reglas, los 4 dominios y el alcance dentro/fuera están cubiertos sin desviaciones (código sin cambios en este Cambio). La única brecha real encontrada fue de documentación: la sección 5 del README (`Vacíos del caso y supuestos`) solo repetía la instrucción del caso ("adopte un supuesto y fundaméntelo") sin listar los supuestos concretos ya adoptados en los Cambios 7, 8, 9 y 10 — quedaban dispersos en sus respectivas "revisión técnica" pero nunca consolidados donde el caso pide declararlos ("en el informe"). Se agregó una tabla de 7 filas (vacío del caso → supuesto adoptado → fundamento) en `README.md` §5 y la misma tabla en `Informe_Viajes_Aventura.docx` §5, cubriendo los tres vacíos que el PDF nombra explícitamente (cancelación de reservas, fin de "temporada" de un paquete, quién administra el catálogo) más cuatro adicionales detectados durante el desarrollo (paquete no publicado, edición/eliminación de paquetes, formato de RUT, catálogo público sin sesión). Se actualizaron también las secciones 6 y 8 del informe Word para reflejar el estado real del proyecto (roles, pruebas, UML, despliegue, rediseño), que habían quedado desactualizadas desde su creación en el Cambio 1 de esta bitácora (cuando solo existía el dominio Destinos).
+
+#### Revisión técnica
+
+Se evaluó implementar la cancelación de reservas (uno de los tres vacíos que el PDF nombra explícitamente como ejemplo) frente a solo documentar el supuesto de que queda fuera de alcance; se adoptó la segunda porque el alcance declarado en README §4 para Reservas no la incluye ("registro y autenticación de clientes, reservar un paquete, almacenar la reserva y consultar el historial propio"), y agregarla habría sido una funcionalidad no pedida por el caso ni por el usuario en esta sesión — si el profesor la exige, es una decisión de alcance a revisar con la guía oficial, no algo para adivinar ahora.
+
+#### Validación
+
+Verificación manual, sección por sección del PDF, contra el código y la documentación existente; no aplica ejecución de código. Se regeneró `Informe_Viajes_Aventura.docx` con el script de `docx` y se confirmó por `python-docx` que las 3 tablas del documento (reglas, vacíos y supuestos, plan de trabajo) tienen las filas y columnas esperadas.
