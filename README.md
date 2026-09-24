@@ -9,7 +9,7 @@ Caso de estudio de la asignatura **TI3V21 Programación Orientada a Objeto Segur
 | Backend | Python 3.10+ · **FastAPI** · `sqlite3` (librería estándar) |
 | Frontend | **React** (consume el backend como API REST/JSON) |
 | Fuente del caso | `Viajes_aventura.pdf` (antecedentes para el levantamiento de requerimientos) |
-| Estado | Dominios Destinos (R1, R2, R8) y Paquetes (R3-R7) implementados — Clientes y Reservas pendientes |
+| Estado | Dominios Destinos (R1, R2, R8), Paquetes (R3-R7) y Clientes y seguridad (R9, R10, R11, R17) implementados — Reservas pendiente |
 | Trazabilidad | `VALIDACION_IA.md`: bitácora de cambios apoyados por IA |
 
 ## Índice
@@ -82,7 +82,7 @@ El caso no dice, por ejemplo, qué ocurre cuando un cliente desiste de una reser
 
 Arquitectura de dos partes, separadas en carpetas propias dentro del repositorio:
 
-- **Backend — `backend/app/`**: Python 3.10+ con **FastAPI**, expuesto como API REST/JSON. Se eligió sobre Flask porque valida automáticamente cada entrada con Pydantic (clave para las reglas R2, R5, R6, R16), genera documentación interactiva (`/docs`) útil para probar la API sin frontend, y su soporte async encaja con el modelo cliente-servidor separado del frontend. Persistencia con `sqlite3` de la librería estándar (`backend/app/database.py`, esquema de las 5 tablas con sus claves foráneas y `CHECK` de las reglas de negocio que se pueden expresar a nivel de columna); autenticación con JWT y contraseñas hasheadas (`passlib`/`bcrypt`) para cumplir R9-R11 y R17 (pendiente de implementar por el dominio Clientes y seguridad).
+- **Backend — `backend/app/`**: Python 3.10+ con **FastAPI**, expuesto como API REST/JSON. Se eligió sobre Flask porque valida automáticamente cada entrada con Pydantic (clave para las reglas R2, R5, R6, R16), genera documentación interactiva (`/docs`) útil para probar la API sin frontend, y su soporte async encaja con el modelo cliente-servidor separado del frontend. Persistencia con `sqlite3` de la librería estándar (`backend/app/database.py`, esquema de las 5 tablas con sus claves foráneas y `CHECK` de las reglas de negocio que se pueden expresar a nivel de columna); autenticación con JWT (`pyjwt`) y contraseñas hasheadas con `bcrypt` para cumplir R9-R11 y R17 (`backend/app/seguridad.py`, `backend/app/clientes.py`).
 - **Frontend — `frontend/`**: **React + Vite**, consumiendo el backend únicamente vía HTTP/JSON (sin acceso directo a la base de datos). Pantallas para catálogo de destinos y paquetes (pública) y para registro/login/reservas de cliente (autenticada).
 
 **Cómo se ejecutan juntos:**
@@ -119,7 +119,7 @@ Las reglas que no se expresan como restricción de columna (R3 combinación 2-5 
 
 ## 8. Estado actual y próximos pasos
 
-Dominios Destinos (R1, R2, R8) y Paquetes (R3-R7) implementados y probados de punta a punta. Pendiente: dominios Clientes y seguridad (R9, R10, R11, R17) y Reservas (R12-R16) — router y validaciones en `backend/app/`, pantalla en `frontend/src/` — más autenticación JWT, modelo UML formal y pruebas automatizadas, siguiendo el ciclo paso a paso registrado en `VALIDACION_IA.md`.
+Dominios Destinos (R1, R2, R8), Paquetes (R3-R7) y Clientes y seguridad (R9, R10, R11, R17) implementados y probados de punta a punta, incluyendo autenticación JWT y hash de contraseñas con `bcrypt`. Pendiente: dominio Reservas (R12-R16) — router y validaciones en `backend/app/`, pantalla en `frontend/src/` — más modelo UML formal y pruebas automatizadas, siguiendo el ciclo paso a paso registrado en `VALIDACION_IA.md`.
 
 ## 9. Uso de IA y registro de cambios
 

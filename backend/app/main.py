@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from .clientes import router as clientes_router
 from .database import init_db
 from .destinos import router as destinos_router
 from .paquetes import router as paquetes_router
@@ -25,9 +26,10 @@ def health():
 
 app.include_router(destinos_router)
 app.include_router(paquetes_router)
+app.include_router(clientes_router)
 
-# Los dominios restantes (clientes, reservas) agregan su router aqui
-# con app.include_router(...) a medida que se implementan.
+# El dominio restante (reservas) agrega su router aqui
+# con app.include_router(...) a medida que se implementa.
 
 STATIC_DIR = Path(__file__).parent.parent / "static"
 if STATIC_DIR.exists():

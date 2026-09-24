@@ -52,3 +52,14 @@ td {
 section + section {
   margin-top: 2.5rem;
 }
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tabs button:disabled {
+  font-weight: bold;
+  opacity: 1;
+}

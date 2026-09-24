@@ -11,6 +11,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 5 - Esqueleto base: backend FastAPI, frontend React y esquema SQLite](#cambio-5---esqueleto-base-backend-fastapi-frontend-react-y-esquema-sqlite)
 - [Cambio 6 - Dominio Destinos: CRUD y catálogo (R1, R2, R8)](#cambio-6---dominio-destinos-crud-y-catálogo-r1-r2-r8)
 - [Cambio 7 - Dominio Paquetes: armado, precio y publicación (R3-R7)](#cambio-7---dominio-paquetes-armado-precio-y-publicación-r3-r7)
+- [Cambio 8 - Dominio Clientes y seguridad: registro, login y JWT (R9, R10, R11, R17)](#cambio-8---dominio-clientes-y-seguridad-registro-login-y-jwt-r9-r10-r11-r17)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -147,3 +148,24 @@ Se evaluó fijar el precio ya en la creación del paquete frente a calcularlo al
 #### Validación
 
 Backend probado localmente con `uvicorn` (puerto 8003): creación de un paquete con 2 destinos (100.000 + 50.000, margen 0.20) devuelve precio 180.000; publicar el paquete fija `publicado: true` y `precio: 180.000`; publicar de nuevo devuelve 409; se cambió el costo base de uno de sus destinos a 999.999 y el precio publicado siguió en 180.000 (R7 verificado); crear un paquete con un solo destino (422, R3), con un destino repetido (422, R3), con más de 5 destinos (422, R3), con fecha de regreso anterior a la de salida (422, R5) y usando un destino marcado `disponible = 0` (409, cruce con R8) — todos los casos se comportaron como se esperaba. Se corrió `npm run build` en `frontend/` y compiló sin errores (19 módulos). La base de datos generada durante las pruebas se eliminó antes de este commit (excluida por `.gitignore`).
+
+### Cambio 8 - Dominio Clientes y seguridad: registro, login y JWT (R9, R10, R11, R17)
+
+**Fecha:** 2026-09-24
+**Archivos creados:** `backend/app/clientes.py`, `backend/app/seguridad.py`, `frontend/src/Clientes.jsx`
+**Archivos modificados:** `backend/app/main.py`, `backend/requirements.txt`, `frontend/src/App.jsx`, `frontend/src/App.css`
+**Objetivo:** implementar el tercer dominio del plan de trabajo (§7): registro y autenticación de clientes, protegiendo credenciales y datos sensibles.
+
+#### Implementación
+
+Backend: `seguridad.py` concentra el hash de contraseñas y el manejo de JWT (independiente del router para poder reutilizarlo desde el dominio Reservas más adelante). `clientes.py` expone `POST /api/clientes/registro`, `POST /api/clientes/login` y `GET /api/clientes/me` (protegido). El esquema `ClienteRegistro` valida con Pydantic: `nombre`/`telefono` no vacíos, `correo` con `EmailStr`, `password` entre 8 y 72 caracteres (R9), y un `field_validator` propio (`_rut_valido`) que calcula el dígito verificador del RUT chileno con el algoritmo módulo 11 y rechaza formatos o dígitos inválidos. La unicidad del correo (R9) se resuelve capturando `sqlite3.IntegrityError` sobre la `UNIQUE` de la tabla, igual que en Destinos. La contraseña se hashea con `bcrypt.hashpw`/`gensalt` antes de guardarla y nunca se compara ni se registra en texto plano (R10). `POST /login` devuelve el mismo error genérico ("Correo o contraseña incorrectos") tanto si el correo no existe como si la contraseña es incorrecta, para no revelar qué correos están registrados. `obtener_cliente_actual` es una dependencia de FastAPI (`HTTPBearer`) que decodifica el JWT, verifica que el cliente siga existiendo y devuelve su id; `GET /me` la usa para exponer solo el perfil del propio cliente autenticado (R11). El modelo de respuesta `ClientePerfil` (`id`, `nombre`, `correo`) nunca incluye `rut` ni `telefono` en ninguna respuesta de la API —ni siquiera en el propio perfil— como cumplimiento estricto de R17.
+
+Frontend: componente `Clientes.jsx` con pestañas "Iniciar sesión"/"Registrarme", que guarda el JWT recibido en `localStorage` y, si hay sesión activa, llama a `GET /api/clientes/me` para mostrar el nombre y correo del cliente junto con un botón "Cerrar sesión".
+
+#### Revisión técnica
+
+Se evaluó usar `passlib[bcrypt]` (ya estaba en `requirements.txt` desde el Cambio 6) frente a usar la librería `bcrypt` directamente; al probar el registro, `passlib` 1.7.4 falló con `AttributeError: module 'bcrypt' has no attribute '__about__'` y luego con `ValueError: password cannot be longer than 72 bytes` durante su propio auto-test interno de compatibilidad — un bug conocido de `passlib` (sin mantención desde 2020) contra versiones de `bcrypt` >= 4.1. Se optó por quitar `passlib` y hashear directamente con `bcrypt.hashpw`/`bcrypt.checkpw`, más simple y sin la capa de compatibilidad rota; se dejó `max_length=72` en el campo `password` porque ese es un límite propio del algoritmo bcrypt, no arbitrario. Se evaluó no restringir R17 solo a "listados" (como dice literalmente la regla) y permitir que el propio cliente vea su RUT/teléfono en `/me`, frente a no exponerlos nunca vía API; se adoptó la segunda por ser la interpretación más estricta y simple de sostener (ninguna respuesta necesita filtrar campos según quién pregunta), documentado aquí como supuesto explícito. Se evaluó devolver un error distinto para "correo no existe" vs. "contraseña incorrecta" en el login frente a un mensaje genérico único; se adoptó el mensaje único porque distinguir esos casos permite enumerar correos registrados probando contraseñas al azar.
+
+#### Validación
+
+Backend probado localmente con `uvicorn`: registro con un RUT válido (`12345678-5`, verificado por cálculo manual del dígito verificador) devuelve 201 con `access_token` y un `cliente` sin `rut` ni `telefono`; registro repitiendo el mismo correo (409); RUT con dígito verificador incorrecto (422); contraseña de 3 caracteres (422); login con la contraseña correcta devuelve un token nuevo; login con contraseña incorrecta (401); `GET /me` con el token devuelve el perfil correcto; `GET /me` sin header `Authorization` (401) y con un token inventado (401). Se corrió `npm run build` en `frontend/` y compiló sin errores (20 módulos). La base de datos generada durante las pruebas se eliminó antes de este commit (excluida por `.gitignore`).
