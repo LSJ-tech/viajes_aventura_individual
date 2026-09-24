@@ -27,6 +27,7 @@ Registro técnico del proyecto Viajes Aventura (TI3V21, INACAP). Documenta cada 
 - [Cambio 21 - Atributo `lang` del HTML corregido a español](#cambio-21---atributo-lang-del-html-corregido-a-español)
 - [Cambio 22 - README puesto al día (37→43 pruebas y variables de Render ya configuradas)](#cambio-22---readme-puesto-al-día-3743-pruebas-y-variables-de-render-ya-configuradas)
 - [Cambio 23 - README del frontend: de plantilla genérica de Vite a descripción real](#cambio-23---readme-del-frontend-de-plantilla-genérica-de-vite-a-descripción-real)
+- [Cambio 24 - Advertencias de oxlint: setState síncrono dentro de efectos](#cambio-24---advertencias-de-oxlint-setstate-síncrono-dentro-de-efectos)
 
 ### Cambio 1 - Documentación inicial del proyecto
 
@@ -485,3 +486,23 @@ Se evaluó borrar `frontend/README.md` directamente (ya que toda la documentaci�
 #### Validación
 
 `npm run build` en `frontend/` compiló sin errores tras el cambio de `package.json`. El build generado se eliminó antes de este commit (excluido por `.gitignore`).
+
+### Cambio 24 - Advertencias de oxlint: setState síncrono dentro de efectos
+
+**Fecha:** 2026-09-24
+**Archivos modificados:** `frontend/src/App.jsx`, `frontend/src/Reservas.jsx`
+**Objetivo:** el usuario volvió a preguntar si quedaba algo por mejorar. En vez de seguir revisando a mano, se corrió `npm run lint` (`oxlint`, ya configurado en `package.json` desde el Cambio 6 pero nunca ejecutado en la bitácora). Reportó 2 advertencias `react(set-state-in-effect)`.
+
+#### Implementación
+
+En `App.jsx`, el `useEffect` que valida el token de cliente llamaba a `setPerfil(null)` de forma síncrona en la rama `if (!token)`, antes de cualquier operación asíncrona. Se eliminó esa llamada: el `early return` ya no necesita tocar el estado porque `setPerfil(null)` se agregó junto a `setToken('')` en el único lugar donde el token pasa a estar vacío por un motivo real (el `catch` cuando el token guardado ya no es válido) — el mismo evento que causa el cambio, en vez de una rama separada del efecto reaccionando a él. En `Reservas.jsx`, el `useState(true)` inicial de `cargando` se reemplazó por `useState(Boolean(token))`, de modo que si el componente se monta sin sesión de cliente el estado ya nace en `false` (no hay nada que cargar) y la rama `if (!token)` del efecto puede hacer `return` sin `setState`; `misReservas` no necesitaba limpiarse ahí porque ya nace en `[]` y, cuando no hay `perfil`, el componente ni siquiera renderiza la tabla (corta antes con el mensaje de "inicia sesión").
+
+Quedó una tercera advertencia en `Reservas.jsx` (`setCargando(true)` antes del `fetch`, cuando `token` sí está presente) que se dejó sin tocar: es el patrón estándar de "mostrar cargando antes de re-consultar datos cuando cambia una prop", el mismo ejemplo que usa la documentación oficial de React para *fetching* dentro de efectos — no es el antipatrón que la regla busca (fijar un valor que podría derivarse en el render), sino una sincronización real con un sistema externo (la API).
+
+#### Revisión técnica
+
+Se evaluó forzar un refactor más grande (mover el fetching a una librería como React Query, o usar un contador de "generación" para evitar la advertencia restante) frente a aceptar esa única advertencia como un falso positivo del linter para un patrón idiomático; se adoptó la segunda porque agregar una dependencia nueva o una abstracción extra solo para silenciar un *warning* sobre código correcto habría sido complejidad sin beneficio real, a días de la entrega.
+
+#### Validación
+
+`npm run lint` bajó de 2 advertencias a 1 (la aceptada como patrón válido). `npm run build` compiló sin errores. Se probó el flujo real con Playwright contra el backend local: registrar un cliente nuevo (el chip pasa a mostrar su nombre), abrir la pestaña Reservas logueado (muestra "Todavía no tienes reservas", no la pantalla de login), cerrar sesión desde el panel del chip, y volver a la pestaña Reservas (vuelve a mostrar "Inicia sesión para reservar...") — los tres pasos funcionaron sin errores de consola. `cd backend && py -3 -m pytest` — 43 pruebas, todas pasan (cambios exclusivos de frontend).

@@ -6,7 +6,7 @@ function Reservas({ token, perfil }) {
   const [paqueteId, setPaqueteId] = useState('')
   const [personas, setPersonas] = useState('1')
   const [error, setError] = useState('')
-  const [cargando, setCargando] = useState(true)
+  const [cargando, setCargando] = useState(Boolean(token))
 
   const cargarPaquetesPublicados = () => {
     fetch('/api/paquetes')
@@ -15,11 +15,7 @@ function Reservas({ token, perfil }) {
   }
 
   const cargarMisReservas = () => {
-    if (!token) {
-      setMisReservas([])
-      setCargando(false)
-      return
-    }
+    if (!token) return
     setCargando(true)
     fetch('/api/reservas', { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => res.json())

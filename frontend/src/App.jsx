@@ -34,10 +34,8 @@ function App() {
   const [tab, setTab] = useState('destinos')
 
   useEffect(() => {
-    if (!token) {
-      setPerfil(null)
-      return
-    }
+    if (!token) return
+
     fetch('/api/clientes/me', { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         if (!res.ok) throw new Error('El token de cliente guardado ya no es válido')
@@ -47,6 +45,7 @@ function App() {
       .catch(() => {
         localStorage.removeItem(TOKEN_KEY)
         setToken('')
+        setPerfil(null)
       })
   }, [token])
 
